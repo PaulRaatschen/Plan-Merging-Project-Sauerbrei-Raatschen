@@ -2,7 +2,7 @@
 
 ## About
 
-Student Project at the University of Potsdam about multi agent path finding in ASP (Answer Set Programming) using the [asprilo](https://potassco.org/asprilo/) framework by [potassco].
+Student Project at the University of Potsdam about multi agent path finding in ASP (Answer Set Programming) using the [asprilo](https://potassco.org/asprilo/) framework.
 
 ## Directories
 
