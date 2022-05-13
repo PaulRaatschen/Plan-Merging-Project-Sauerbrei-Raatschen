@@ -1,3 +1,6 @@
+%singleAgentPF.lp
+%Takes an instance.lp and id (for example -c id = 1), and draws the path for the robot with id 1 to the shelf with the id 1
+
 %#include "selective_input.lp"."
 %#include "goal.lp".
 %#include "action.lp".

@@ -18,8 +18,9 @@ edgeCollision((X,Y),(X',Y'),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X',Y'
 % Detect overlaying paths with intersecting position
 edgeCollision((X0,Y0),(X1,Y1),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X,Y),T), R!=R', rPosition(R,(X1,Y1),T+1), rPosition(R',(X1,Y1),T-1), rPosition(R,(X0,Y0),T-1), rPosition(R',(X0,Y0),T+1).
 
+
 #show node/1.
 #show rPosition/3.
 #show vertextCollision/4.
 #show edgeCollision/5.
-
+#show init/2.

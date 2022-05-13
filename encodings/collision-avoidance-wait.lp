@@ -23,4 +23,6 @@ occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T),rPosit
     occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T),rPosition(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y,vertextCollision((X'',Y''),T',R,R'), choice(R), T=T'.
     occurs(object(robot,R),action(move,(DX,DY)),T+2) :- rPosition(R,(X,Y), T),rPosition(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y,vertextCollision((X'',Y''),T',R,R'), choice(R), T>=T'.
 
+#show init/2.
+
 #show occurs/3.
