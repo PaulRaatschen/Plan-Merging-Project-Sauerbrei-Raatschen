@@ -101,6 +101,9 @@ text_file.close()
 
 #creates and saves the found solution
 c = clingo.clingo_main(Application(sys.argv[0]), [sys.argv[4],colissionLocation ,"--outf=3"])
+resultOfClingo = resultOfClingo.split(".")
+resultOfClingo.sort()
+resultOfClingo =".".join(resultOfClingo) + "."
 text_file = open(resultLocation, "w")
-text_file.write(resultOfClingo)
+text_file.write(resultOfClingo[1:])
 text_file.close()
