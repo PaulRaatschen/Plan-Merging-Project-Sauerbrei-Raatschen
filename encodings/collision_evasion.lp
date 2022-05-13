@@ -43,5 +43,8 @@ occurs(object(robot,R),action(move,(DX,DY)),T0 + W + 1) :- chosenStep((X,Y),T0,R
 % Continue original path with delay
 occurs(object(robot,R),action(move,(DX,DY)),T + 1 + W + 1) :- rPosition(R,(X',Y'),T), rPosition(R,(X,Y),T-1), chosenStep(_,T0,R,D), T >= T0, DX = X'- X, DY = Y' - Y, waitTime(W).
 
+#show init/2.
+
 #show occurs/3.
+
 
