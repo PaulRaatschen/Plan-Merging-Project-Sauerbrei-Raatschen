@@ -1,7 +1,7 @@
 """
 ConflictSolver.py
 
-Input: File becomes 4 clingo files as input: "instance.lp" singleAgentPF.lp conflict_detection.lp "conflictsolving.lp"
+Input: File receives 4 clingo files as input: "instance.lp" singleAgentPF.lp conflict_detection.lp "conflictsolving.lp"
 example in Anaconda:
 
 python ConflictSolver.py Cross_2rB.lp singleAgentPF.lp conflict_detection.lp collision-avoidance.lp
@@ -18,7 +18,7 @@ import sys #used to give .lp files in the prompt
 import ntpath
 import clingo
 from os import mkdir #to create a folder which saves the results
-from collections import Counter #used toremove duplicates
+from collections import Counter #used to remove duplicates
 
 #standard clingo function
 class Application:
@@ -37,7 +37,7 @@ class Application:
         ctl.ground([("base", [])])
         
         with ctl.solve(yield_=True) as handle:
-            #Saves resulst into global string resultOfClingo
+            #Saves results into global string resultOfClingo
             global resultOfClingo
             for m in handle: resultOfClingo = format(m).replace(" ", ".") + "."
 
