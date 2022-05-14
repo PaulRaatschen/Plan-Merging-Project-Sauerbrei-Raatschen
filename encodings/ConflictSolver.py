@@ -1,7 +1,8 @@
 """
 ConflictSolver.py
 
-Input: File becomes 4 clingo files as input: "instance.lp" singleAgentPF.lp conflict_detection.lp "conflictsolving.lp"
+Input:  File can become up to 4 clingo files as input: "instance.lp" singleAgentPF.lp conflict_detection.lp "conflictsolving.lp"
+        Yet it also works when giving only instance.lp, then the program has to run in the main folder
 example in Anaconda:
 
 python ConflictSolver.py Cross_2rB.lp singleAgentPF.lp conflict_detection.lp collision-avoidance.lp
@@ -61,6 +62,13 @@ def path_leaf(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
 
+#change here the last element to change conflict solving method
+inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision_evasion.lp"]
+
+for i in range(1,len(sys.argv)):
+    inputs[i-1] = sys.argv[i]
+
+
 #list containing all generated paths
 paths = []
 
@@ -68,14 +76,14 @@ paths = []
 numberOfRobots = 4
 for i in range(1,numberOfRobots +1):
     
-    c = clingo.clingo_main(Application(sys.argv[0]), [sys.argv[1] , sys.argv[2] ,"--outf=3", "-c horizon=20", "-c id ="+ str(i)])
+    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[0] , inputs[1] ,"--outf=3", "-c horizon=20", "-c id ="+ str(i)])
     paths.append(resultOfClingo)
 
 #joins and cleans all the paths
 pathsClean = remove_duplicates("".join(paths))
 
 
-instanceName = path_leaf(str(sys.argv[1]))[0:-3]
+instanceName = path_leaf(str(inputs[0]))[0:-3]
 #creates directory with the name of the instance
 try:
     mkdir(instanceName)
@@ -94,13 +102,13 @@ text_file.write(pathsClean)
 text_file.close()
 
 #creates and saves all conflicts
-c = clingo.clingo_main(Application(sys.argv[0]), [sys.argv[3],pathLocation ,"--outf=3"])
+c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],pathLocation ,"--outf=3"])
 text_file = open(colissionLocation, "w")
 text_file.write(resultOfClingo)
 text_file.close()
 
 #creates and saves the found solution
-c = clingo.clingo_main(Application(sys.argv[0]), [sys.argv[4],colissionLocation ,"--outf=3"])
+c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
 resultOfClingo = resultOfClingo.split(".")
 resultOfClingo.sort()
 resultOfClingo =".".join(resultOfClingo) + "."
