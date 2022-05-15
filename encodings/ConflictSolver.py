@@ -63,12 +63,12 @@ def path_leaf(path):
     return tail or ntpath.basename(head)
 
 #change here the last element to change conflict solving method
-inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision_evasion.lp"]
+inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision-avoidance.lp"]
 
 for i in range(1,len(sys.argv)):
     inputs[i-1] = sys.argv[i]
 
-
+print(inputs)
 #list containing all generated paths
 paths = []
 
