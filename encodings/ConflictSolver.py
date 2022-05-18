@@ -15,6 +15,7 @@ Needs to run in an environment which supports clingo applications
 """
 
 
+import re
 import sys #used to give .lp files in the prompt
 import ntpath
 import clingo
@@ -63,7 +64,7 @@ def path_leaf(path):
     return tail or ntpath.basename(head)
 
 #change here the last element to change conflict solving method
-inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision-avoidance.lp"]
+inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision_evasion.lp","encodings/collision-avoidance-wait.lp"]
 
 for i in range(1,len(sys.argv)):
     inputs[i-1] = sys.argv[i]
@@ -73,7 +74,7 @@ print(inputs)
 paths = []
 
 #number of how many robots the instance has
-numberOfRobots = 4
+numberOfRobots = 10
 for i in range(1,numberOfRobots +1):
     
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[0] , inputs[1] ,"--outf=3", "-c horizon=20", "-c id ="+ str(i)])
@@ -101,17 +102,74 @@ text_file = open(pathLocation, "w")
 text_file.write(pathsClean)
 text_file.close()
 
-#creates and saves all conflicts
-c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],pathLocation ,"--outf=3"])
-text_file = open(colissionLocation, "w")
-text_file.write(resultOfClingo)
+text_file = open(resultLocation, "w")
+text_file.write(pathsClean)
 text_file.close()
 
-#creates and saves the found solution
-c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
-resultOfClingo = resultOfClingo.split(".")
-resultOfClingo.sort()
-resultOfClingo =".".join(resultOfClingo) + "."
-text_file = open(resultLocation, "w")
-text_file.write(resultOfClingo[1:])
-text_file.close()
+# #creates and saves all conflicts
+# c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],pathLocation ,"--outf=3"])
+# text_file = open(colissionLocation, "w")
+# text_file.write(resultOfClingo)
+# text_file.close()
+
+# if "edge" in resultOfClingo:
+
+#     #creates and saves the found solution
+#     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
+#     resultOfClingo = resultOfClingo.split(".")
+#     resultOfClingo.sort()
+#     resultOfClingo =".".join(resultOfClingo) + "."
+#     text_file = open(resultLocation, "w")
+#     text_file.write(resultOfClingo[1:])
+#     text_file.close()
+
+for i in range(0,7):
+
+    #creates and saves all conflicts
+    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
+    text_file = open(colissionLocation, "w")
+    text_file.write(resultOfClingo)
+    text_file.close()
+
+    if "edge" in resultOfClingo:
+            #creates and saves the found solution
+        c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
+        if "rPosition" in resultOfClingo:
+            continue
+        resultOfClingo = resultOfClingo.split(".")
+        resultOfClingo.sort()
+        resultOfClingo =".".join(resultOfClingo) + "."
+        text_file = open(resultLocation, "w")
+        text_file.write(resultOfClingo[1:])
+        text_file.close()
+    else:
+        break
+
+for i in range(0,20):
+
+    #creates and saves all conflicts
+    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
+    text_file = open(colissionLocation, "w")
+    text_file.write(resultOfClingo)
+    text_file.close()
+
+    if "vertex" in resultOfClingo:
+            #creates and saves the found solution
+        c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
+        resultOfClingo = resultOfClingo.split(".")
+        resultOfClingo.sort()
+        resultOfClingo =".".join(resultOfClingo) + "."
+        text_file = open(resultLocation, "w")
+        text_file.write(resultOfClingo[1:])
+        text_file.close()
+    else:
+        break
+
+
+
+
+
+
+
+
+

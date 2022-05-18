@@ -13,10 +13,10 @@ rPosition(R,(X+DX,Y+DY),T+1) :- occurs(object(robot,R),action(move,(DX,DY)),T+1)
 vertextCollision((X,Y),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X,Y),T), R!=R', rPosition(R,(X0,Y0),T-1), rPosition(R',(X1,Y1),T-1), not edgeCollision((X0,Y0),(X1,Y1),T,R,R').
 
 % Detect overlaying paths
-edgeCollision((X,Y),(X',Y'),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X',Y'),T), rPosition(R,(X',Y'),T+1), rPosition(R',(X,Y),T+1).
+edgeCollision((X,Y),(X',Y'),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X',Y'),T), rPosition(R,(X',Y'),T+1), rPosition(R',(X,Y),T+1), R != R'.
 
 % Detect overlaying paths with intersecting position
-edgeCollision((X0,Y0),(X1,Y1),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X,Y),T), R!=R', rPosition(R,(X1,Y1),T+1), rPosition(R',(X1,Y1),T-1), rPosition(R,(X0,Y0),T-1), rPosition(R',(X0,Y0),T+1).
+edgeCollision((X0,Y0),(X1,Y1),T,R,R') :- rPosition(R,(X,Y),T), rPosition(R',(X,Y),T), R!=R', rPosition(R,(X1,Y1),T+1), rPosition(R',(X1,Y1),T-1), rPosition(R,(X0,Y0),T-1), rPosition(R',(X0,Y0),T+1), R != R'.
 
 
 #show node/1.
