@@ -22,8 +22,11 @@ waitTime(W) :- chosenStep((X,Y),T0,R,D), rPosition(R,(X',Y'),T0-1),  R!=R', rPos
 % Translate back to occurs and init syntax. Incorporate evasion step into path of chosen robot
 init(object(robot,R),value(at,(X,Y))) :- rPosition(R,(X,Y), 0).
 
+occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T),rPosition(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y, edgeCollision((X0,Y0),(X0',Y0'),T0,R0,R1), R != R0, R != R1.
+
+
 % Keep the path of the non evading robot unaltered
-occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X',Y'),T+1), rPosition(R,(X,Y),T), chosenStep(_,_,R',_), not R = R', DX = X'-X, DY = Y'-Y.
+occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X',Y'),T+1), rPosition(R,(X,Y),T), chosenStep(_,_,R',_),edgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), not R = R', DX = X'-X, DY = Y'-Y.
 
 % Keep the path of the evading robot unaltered until evasion step
 occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X',Y'),T+1), rPosition(R,(X,Y),T), chosenStep(_,T',R,_), T+1 < T', DX = X'-X, DY = Y'-Y. 
