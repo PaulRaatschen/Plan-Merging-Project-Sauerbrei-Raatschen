@@ -63,7 +63,7 @@ def path_leaf(path):
     return tail or ntpath.basename(head)
 
 #change here the last element to change conflict solving method
-inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision-avoidance.lp"]
+inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision_evasion.lp"]
 
 for i in range(1,len(sys.argv)):
     inputs[i-1] = sys.argv[i]
@@ -114,4 +114,21 @@ resultOfClingo.sort()
 resultOfClingo =".".join(resultOfClingo) + "."
 text_file = open(resultLocation, "w")
 text_file.write(resultOfClingo[1:])
+
 text_file.close()
+
+c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
+text_file = open(colissionLocation, "w")
+text_file.write(resultOfClingo)
+text_file.close()
+
+#creates and saves the found solution
+c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
+resultOfClingo = resultOfClingo.split(".")
+resultOfClingo.sort()
+resultOfClingo =".".join(resultOfClingo) + "."
+text_file = open(resultLocation, "w")
+text_file.write(resultOfClingo[1:])
+
+#print(resultOfClingo)
+
