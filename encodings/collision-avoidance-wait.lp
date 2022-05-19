@@ -25,8 +25,8 @@ occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T),rPosit
     %Adding the wait for the moment where the crash would occure
     occurs(object(robot,R),action(move,(0,0)),T) :- firstvertextCollision((X',Y'),T,R,R'), choice(R).
     %Resuming the occurs from after the waiting
-    occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T),rPosition(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y,firstvertextCollision((X'',Y''),T',R,R'), choice(R), T=T'.
-    occurs(object(robot,R),action(move,(DX,DY)),T+2) :- rPosition(R,(X,Y), T),rPosition(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y,firstvertextCollision((X'',Y''),T',R,R'), choice(R), T>=T'.
+    occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T-1),rPosition(R,(X',Y'), T),DX = X'-X,DY=Y'-Y,firstvertextCollision((X'',Y''),T',R,R'), choice(R), T=T'.
+    occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T-1),rPosition(R,(X',Y'), T),DX = X'-X,DY=Y'-Y,firstvertextCollision((X'',Y''),T',R,R'), choice(R), T+1>T'.
 
 
 #show init/2.

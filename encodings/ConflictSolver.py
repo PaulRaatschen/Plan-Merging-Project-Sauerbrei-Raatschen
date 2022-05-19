@@ -77,7 +77,7 @@ paths = []
 numberOfRobots = 10
 for i in range(1,numberOfRobots +1):
     
-    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[0] , inputs[1] ,"--outf=3", "-c horizon=20", "-c id ="+ str(i)])
+    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[0] , inputs[1] ,"--outf=3", "-c horizon=40", "-c id ="+ str(i)])
     paths.append(resultOfClingo)
 
 #joins and cleans all the paths
@@ -123,29 +123,35 @@ text_file.close()
 #     text_file.write(resultOfClingo[1:])
 #     text_file.close()
 
-for i in range(0,7):
+for i in range(0,0):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
     text_file = open(colissionLocation, "w")
     text_file.write(resultOfClingo)
     text_file.close()
-
     if "edge" in resultOfClingo:
             #creates and saves the found solution
         c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
         if "rPosition" in resultOfClingo:
+            print("No solution in edge, iteration" + str(i))
             continue
         resultOfClingo = resultOfClingo.split(".")
         resultOfClingo.sort()
+        for i in resultOfClingo:
+            
+            if "first" in i:
+                print("Iteration " + str(i))
+                print(i)
         resultOfClingo =".".join(resultOfClingo) + "."
         text_file = open(resultLocation, "w")
         text_file.write(resultOfClingo[1:])
         text_file.close()
     else:
+        print("Edge, stopped after iteration " + str(i))
         break
 
-for i in range(0,20):
+for i in range(0,30):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
@@ -158,11 +164,15 @@ for i in range(0,20):
         c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
         resultOfClingo = resultOfClingo.split(".")
         resultOfClingo.sort()
+        if "rPosition" in resultOfClingo:
+            print("No solution in vertex, iteration" + str(i))
+            continue
         resultOfClingo =".".join(resultOfClingo) + "."
         text_file = open(resultLocation, "w")
         text_file.write(resultOfClingo[1:])
         text_file.close()
     else:
+        print("Vertex. topped after iteration " + str(i))
         break
 
 
