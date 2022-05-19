@@ -123,7 +123,7 @@ text_file.close()
 #     text_file.write(resultOfClingo[1:])
 #     text_file.close()
 
-for i in range(0,7):
+for i in range(0,1):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
@@ -138,11 +138,12 @@ for i in range(0,7):
             continue
         resultOfClingo = resultOfClingo.split(".")
         resultOfClingo.sort()
-        for i in resultOfClingo:
+        print("Iteration " + str(i)+ "\n")
+        for j in resultOfClingo:
             
-            if "first" in i:
-                print("Iteration " + str(i))
-                print(i)
+            if "first" in j:
+                
+                print(j)
         resultOfClingo =".".join(resultOfClingo) + "."
         text_file = open(resultLocation, "w")
         text_file.write(resultOfClingo[1:])
@@ -167,12 +168,15 @@ for i in range(0,0):
         if "rPosition" in resultOfClingo:
             print("No solution in vertex, iteration" + str(i))
             continue
+        if "edge" in resultOfClingo:
+            print("Found edge in vertex, iteration" + str(i))
+            continue
         resultOfClingo =".".join(resultOfClingo) + "."
         text_file = open(resultLocation, "w")
         text_file.write(resultOfClingo[1:])
         text_file.close()
     else:
-        print("Vertex. topped after iteration " + str(i))
+        print("Vertex. stopped after iteration " + str(i))
         break
 
 

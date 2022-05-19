@@ -7,7 +7,7 @@ firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R') :- firstedgeCollision((X0,Y0),(X0'
 
 
 % Find an evasion step for one of the robots that frees the path for the other one
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), not rPosition(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)).
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), not rPosition(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
 %evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)).
 % Problem: Rule does not allow for evasion step to be on other robots path, though there could be valid evasion steps there  (same problem as in line 10)
 
@@ -48,14 +48,14 @@ occurs(object(robot,R),action(move,(0,0)),T0+1) :- chosenStep((X,Y),T0,R,D), D >
 occurs(object(robot,R),action(move,(0,0)),T+1) :- occurs(object(robot,R),action(move,(0,0)),T), chosenStep((X,Y),T0,R,D), waitTime(W), T < T0 + W,firstedgeCollision(_,_,_,R',R).
 
 % Move evading robot back onto original path 
-occurs(object(robot,R),action(move,(DX,DY)),T0 + W + 1) :- chosenStep((X,Y),T0,R,D), rPosition(R,(X',Y'),T0-1),firstedgeCollision(_,_,_,R',R), DX = X'-X, DY = Y'-Y, waitTime(W).
+occurs(object(robot,R),action(move,(DX,DY)),T0 + W + 1) :- chosenStep((X,Y),T0,R,D), rPosition(R,(X',Y'),T0-1),firstedgeCollision(_,_,_,R,R'), DX = X'-X, DY = Y'-Y, waitTime(W).
 
 % Continue original path with delay
 occurs(object(robot,R),action(move,(DX,DY)),T + 1 + W + 1) :- rPosition(R,(X',Y'),T), rPosition(R,(X,Y),T-1), chosenStep(_,T0,R,D), T >= T0, DX = X'- X, DY = Y' - Y, waitTime(W),firstedgeCollision(_,_,_,R',R).
 
 occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPosition(R,(X,Y), T),rPosition(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y, firstedgeCollision(_,_,_,R1,R2), R != R1, R != R2.
 #show init/2.
-%#show firstedgeCollision/5.
+#show firstedgeCollision/5.
 #show occurs/3.
 
 
