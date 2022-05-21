@@ -7,7 +7,7 @@ firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R') :- firstedgeCollision((X0,Y0),(X0'
 
 
 % Find an evasion step for one of the robots that frees the path for the other one
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), not rPosition(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), not rPosition(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| <= 1, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
 %evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)).
 % Problem: Rule does not allow for evasion step to be on other robots path, though there could be valid evasion steps there  (same problem as in line 10)
 
