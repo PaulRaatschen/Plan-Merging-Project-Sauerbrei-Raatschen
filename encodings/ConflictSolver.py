@@ -75,7 +75,7 @@ print(inputs)
 paths = []
 
 #number of how many robots the instance has
-numberOfRobots = 10
+numberOfRobots = 30
 for i in range(1,numberOfRobots +1):
     
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[0] , inputs[1] ,"--outf=3", "-c horizon=40", "-c id ="+ str(i)])
@@ -123,7 +123,7 @@ text_file.close()
 
 
 
-for i in range(0,10):
+for i in range(0,100):
 
 
     #creates and saves all conflicts
@@ -139,18 +139,26 @@ for i in range(0,10):
         if "edge" in resultOfClingo:
 
             print("No solution in itearation " + str(i))
-            resultOfClingosplit = resultOfClingo.split(".")
-
-            for j in resultOfClingosplit:
-
-                if "firstedge" in j:
-                    print("The edge collision " +j+ " could not be solved")
-
+            
+            for j in resultOfClingo.split("."):
+            
+                if "Col" in j:
+                
+                    print(j + "\n")
+            
+            break
 
 
             
+            # c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
+            # if "edge" in resultOfClingo:
+            #      print("\nExtra vertex collision didn't work")
+            #      continue
+            # print("\n Vertex Collision solved")
+            # text_file = open(resultLocation, "w")
+            # text_file.write(resultOfClingo)
+            # text_file.close()
 
-            continue
     
 
         print("\n\nEdge - Iteration " + str(i)+ "\n")
@@ -170,7 +178,7 @@ for i in range(0,10):
         print("Edge, stopped after iteration " + str(i))
         break
 
-for i in range(0,20):
+for i in range(0,100):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])

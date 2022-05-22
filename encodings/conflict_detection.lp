@@ -9,9 +9,10 @@
 node((X,Y)) :- init(object(node,_),value(at,(X,Y))).
 
 % Initialize robot position
+
+
+
 rPositionX(R,(X,Y),T) :- rPosition(R,(X,Y),T).
-
-
 
 % Detect intersecting paths
 vertextCollision((X,Y),T,R,R') :- rPositionX(R,(X,Y),T), rPositionX(R',(X,Y),T), R!=R', rPositionX(R,(X0,Y0),T-1), rPositionX(R',(X1,Y1),T-1).

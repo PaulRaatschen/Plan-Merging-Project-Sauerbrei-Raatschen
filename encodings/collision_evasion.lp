@@ -8,8 +8,11 @@ firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S) :- firstedgeCollision((X0,Y0),(X
 conflict(A,B,C,D,E,F) :- firstedgeCollision(A,B,C,D,E,F).
 
 % Find an evasion step for one of the robots that frees the path for the other one
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',_), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+2, node((X,Y)). %<= 1 zu =1 falls Probleme
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',_),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+2, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rPosition(R,P,T+2),rPosition(R',P,T+1), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| <= 1, D = |T0-T|+ (|X-X'|+|Y-Y'|)*2, node((X,Y)). %<= 1 zu =1 falls Probleme
+
 
 %evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)).
 
@@ -34,6 +37,7 @@ minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}.
 waitTime(W) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
 waitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),|X-X'|+|Y-Y'| == 1, W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
 waitTime(W) :- firstedgeCollision((X0,Y0),_,_,R,R',onewaiting),chosenStep((X,Y),T0,R,D), rPositionX(R',(X0,Y0),T1),rPositionX(R',(X1,Y1),T2), |X0-X1|+|Y0-Y1| = 1, T1 < T2, W = T2-T0-1 .
+
 %waitTime(W) :- chosenStep((X,Y),T0,R,0), rPositionX(R,(X',Y'),T0-1),rPositionX(R',(X',Y'),TD), W = TD- (T0-1).
 
 
@@ -71,6 +75,7 @@ rPosition(R,(X',Y'),T):- chosenStep((X,Y),T0,R,D), waitTime(W), rPositionX(R,(X'
 
 %occurs(object(robot,R),action(move,(DX,DY)),T+1) :- rPositionX(R,(X,Y), T),rPositionX(R,(X',Y'), T+1),DX = X'-X,DY=Y'-Y, firstedgeCollision(_,_,_,R1,R2), R != R1, R != R2.
 rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y), T), firstedgeCollision(_,_,_,R1,R2,_), R != R1, R != R2.
+
 
 #show init/2.
 #show waitTime/1.
