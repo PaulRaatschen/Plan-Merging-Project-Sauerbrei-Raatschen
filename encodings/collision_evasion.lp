@@ -11,8 +11,8 @@ conflict(A,B,C,D,E,F) :- firstedgeCollision(A,B,C,D,E,F).
 evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+2, node((X,Y)). %<= 1 zu =1 falls Probleme
 evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
 evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rPosition(R,P,T+2),rPosition(R',P,T+1), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| <= 1, D = |T0-T|+ (|X-X'|+|Y-Y'|)*2, node((X,Y)). %<= 1 zu =1 falls Probleme
-
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|-6, node((X,Y)). %<= 1 zu =1 falls Probleme
 
 %evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)).
 
@@ -81,6 +81,7 @@ rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y), T), firstedgeCollision(_,_,_,R1,R2,_
 #show waitTime/1.
 #show rPosition/3.
 #show conflict/6.
+
 
 
 

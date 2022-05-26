@@ -45,5 +45,6 @@ rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y), T), finalChoice(R'), R!=R'.
 #show firstvertextCollision/4.
 #show choice/2.
 #show finalChoice/1.
+%#show edgeCollision/6.
 
 

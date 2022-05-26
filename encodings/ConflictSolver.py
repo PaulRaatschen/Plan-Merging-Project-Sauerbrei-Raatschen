@@ -123,7 +123,7 @@ text_file.close()
 
 
 
-for i in range(0,100):
+for i in range(0,50):
 
 
     #creates and saves all conflicts
@@ -178,7 +178,7 @@ for i in range(0,100):
         print("Edge, stopped after iteration " + str(i))
         break
 
-for i in range(0,100):
+for i in range(0,500):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
