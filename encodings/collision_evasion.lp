@@ -8,11 +8,12 @@ firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S) :- firstedgeCollision((X0,Y0),(X
 conflict(A,B,C,D,E,F) :- firstedgeCollision(A,B,C,D,E,F).
 
 % Find an evasion step for one of the robots that frees the path for the other one
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+2, node((X,Y)). %<= 1 zu =1 falls Probleme
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), not rPositionX(R',(X,Y),_), rPosition(R,P,T+2),rPosition(R',P,T+1), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|-6, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), rPositionX(R',(XT,YT),_), rBacktraking(R,(X',Y'),T),|X-XT|+|Y-YT| != 0, |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), rPositionX(R',(XT,YT),_), rBacktraking(R,(X',Y'),T),|X-XT|+|Y-YT| != 0, |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',onewaiting), rPositionX(R',(XT,YT),_), rBacktraking(R,(X',Y'),T),|X-XT|+|Y-YT| != 0, rPosition(R,P,T+2),rPosition(R',P,T+1), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
+
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+1, node((X,Y)). %<= 1 zu =1 falls Probleme
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)). %<= 1 zu =1 falls Probleme
 
 %evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R'), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)).
 
@@ -34,10 +35,12 @@ minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}.
 {chosenStep((X,Y),T,R,D): evasionStep((X,Y),T,R,D)} = 1 :- minDistance(D). 
 
 % Time that evading robot has to wait
+waitTime(W) :- chosenStep((X,Y),T0,R,D), firstedgeCollision(_,_,T1,R,R',bothmoving), W = T1-T0 + TX, TX 
 waitTime(W) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
 waitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),|X-X'|+|Y-Y'| == 1, W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
 waitTime(W) :- firstedgeCollision((X0,Y0),_,_,R,R',onewaiting),chosenStep((X,Y),T0,R,D), rPositionX(R',(X0,Y0),T1),rPositionX(R',(X1,Y1),T2), |X0-X1|+|Y0-Y1| = 1, T1 < T2, W = T2-T0-1 .
 
+%{waitTime(W): waitTime(W)} = 1.
 %waitTime(W) :- chosenStep((X,Y),T0,R,0), rPositionX(R,(X',Y'),T0-1),rPositionX(R',(X',Y'),TD), W = TD- (T0-1).
 
 
@@ -63,8 +66,8 @@ rPosition(R,(X,Y),T) :- chosenStep((X,Y),T,R,D).
 % Add waiting moves until the non evading robot has freed the path (not necessary)
 %occurs(object(robot,R),action(move,(0,0)),T+1) :- occurs(object(robot,R),action(move,(0,0)),T), chosenStep((X,Y),T0,R,D), waitTime(W), T < T0 + W,firstedgeCollision(_,_,_,R',R).
 timeToWait(T0..T0 + W):- chosenStep((X,Y),T0,R,D), waitTime(W).
-{rPosition(R,(X,Y),T): chosenStep((X,Y),T0,R,D), timeToWait(T)} = W+1 :- waitTime(W).
-
+%{rPosition(R,(X,Y),T): chosenStep((X,Y),T0,R,D), timeToWait(T)} = W+1 :- waitTime(W).
+rPosition(R,(X,Y),T):- chosenStep((X,Y),T0,R,D), timeToWait(T).
 % Move evading robot back onto original path 
 %occurs(object(robot,R),action(move,(DX,DY)),T0 + W + 1) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1),firstedgeCollision(_,_,_,R,R'), DX = X'-X, DY = Y'-Y, waitTime(W).
 rPosition(R,(X',Y'),T0+W + 1):- chosenStep((X,Y),T0,R,D), waitTime(W), rPositionX(R,(X',Y'),T0-1).

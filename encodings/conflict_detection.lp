@@ -15,7 +15,8 @@ node((X,Y)) :- init(object(node,_),value(at,(X,Y))).
 rPositionX(R,(X,Y),T) :- rPosition(R,(X,Y),T).
 
 % Detect intersecting paths
-vertextCollision((X,Y),T,R,R') :- rPositionX(R,(X,Y),T), rPositionX(R',(X,Y),T), R!=R', rPositionX(R,(X0,Y0),T-1), rPositionX(R',(X1,Y1),T-1).
+vertextCollision((X,Y),T,R,R') :- rPositionX(R,(X,Y),T), rPositionX(R',(X,Y),T), R!=R', rPositionX(R,(X0,Y0),T-1), rPositionX(R',(X1,Y1),T-1),  |X1-X0|+ |Y1-Y0| != 0, not rPositionX(R',(X1,Y1),T),not rPositionX(R,(X0,Y0),T).
+
 
 
 % Detect overlaying paths
@@ -25,7 +26,7 @@ edgeCollision((X,Y),(X',Y'),T,R,R',bothmoving) :- rPositionX(R,(X,Y),T), rPositi
 
 % Detect overlaying paths with intersecting position
 edgeCollision((X0,Y0),(X1,Y1),T,R,R',bothmoving) :- rPositionX(R,(X,Y),T), rPositionX(R',(X,Y),T), R!=R', rPositionX(R,(X1,Y1),T+1), rPositionX(R',(X1,Y1),T-1), rPositionX(R,(X0,Y0),T-1), rPositionX(R',(X0,Y0),T+1), R != R',|X0-X1|+|Y0-Y1| > 0.
-edgeCollision(P,P',T+1,R,R',onewaiting) :- rPositionX(R,P,T), rPositionX(R,P,T+1),rPositionX(R',P',T), rPositionX(R',P,T+1), R != R', P != P'.
+edgeCollision(P,P',T+1,R,R',onewaiting) :- rPositionX(R,P,T), rPositionX(R,P,T+1),rPositionX(R',P',T), rPositionX(R',P,T+1), R != R', P != P', not vertextCollision(_,_,R,R'), not vertextCollision(_,_,R',R).
 
 
 

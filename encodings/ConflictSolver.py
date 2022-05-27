@@ -15,6 +15,7 @@ Needs to run in an environment which supports clingo applications
 """
 
 
+from ipaddress import collapse_addresses
 import re
 import sys #used to give .lp files in the prompt
 import ntpath
@@ -22,6 +23,13 @@ import clingo
 from os import mkdir #to create a folder which saves the results
 from os import system #To ropen viz after executing system('viz')
 from collections import Counter #used toremove duplicates
+
+
+resultOfClingo = ""
+
+edgeIterations = 300
+
+vertexIterations = 100
 
 #standard clingo function
 class Application:
@@ -63,6 +71,68 @@ def remove_duplicates(input):
 def path_leaf(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
+
+def solveEdge():
+    global edgeIterations
+    while(edgeIterations > 0):
+
+        global resultOfClingo
+        global resultLocation
+        global colissionLocation
+        global inputs
+        #creates and saves all conflicts
+        c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
+
+
+        text_file = open(colissionLocation, "w")
+        text_file.write(resultOfClingo)
+        text_file.close()
+        edgeIterations = edgeIterations -1
+        if "edge" in resultOfClingo:
+                #creates and saves the found solution
+            c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
+            
+            if "edge" in resultOfClingo:
+
+                print("No solution in itearation " + str(i))
+                
+                for j in resultOfClingo.split("."):
+                
+                    if "Col" in j:
+                    
+                        print(j + "\n")
+                
+                break
+
+
+                
+                # c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
+                # if "edge" in resultOfClingo:
+                #      print("\nExtra vertex collision didn't work")
+                #      continue
+                # print("\n Vertex Collision solved")
+                # text_file = open(resultLocation, "w")
+                # text_file.write(resultOfClingo)
+                # text_file.close()
+
+        
+
+            print("\n\nEdge - Iteration " + str(edgeIterations)+ "\n")
+            for j in resultOfClingo.split("."):
+                
+                if "conflict" in j:
+                    
+                    print(j + "\n")
+                if "wa" in j:
+                    print(j)
+
+            #resultOfClingo =".".join(resultOfClingo) + "."
+            text_file = open(resultLocation, "w")
+            text_file.write(resultOfClingo[1:])
+            text_file.close()
+        else:
+            print("Edge, stopped after iteration " + str(i))
+            break
 
 #change here the last element to change conflict solving method
 inputs = ["", "encodings/singleAgentPF.lp","encodings/conflict_detection.lp","encodings/collision_evasion.lp","encodings/collision-avoidance-wait.lp","encodings/collisionToRPosition.lp","encodings/rPositionToCollision.lp"]
@@ -122,63 +192,10 @@ text_file.close()
 
 
 
-
-for i in range(0,50):
-
-
-    #creates and saves all conflicts
-    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
-    text_file = open(colissionLocation, "w")
-    text_file.write(resultOfClingo)
-    text_file.close()
-
-    if "edge" in resultOfClingo:
-            #creates and saves the found solution
-        c = clingo.clingo_main(Application(sys.argv[0]), [inputs[3],colissionLocation ,"--outf=3"])
-
-        if "edge" in resultOfClingo:
-
-            print("No solution in itearation " + str(i))
-            
-            for j in resultOfClingo.split("."):
-            
-                if "Col" in j:
-                
-                    print(j + "\n")
-            
-            break
+solveEdge()
 
 
-            
-            # c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
-            # if "edge" in resultOfClingo:
-            #      print("\nExtra vertex collision didn't work")
-            #      continue
-            # print("\n Vertex Collision solved")
-            # text_file = open(resultLocation, "w")
-            # text_file.write(resultOfClingo)
-            # text_file.close()
-
-    
-
-        print("\n\nEdge - Iteration " + str(i)+ "\n")
-        for j in resultOfClingo.split("."):
-            
-            if "conflict" in j:
-                
-                print(j + "\n")
-            if "wa" in j:
-                print(j)
-
-        #resultOfClingo =".".join(resultOfClingo) + "."
-        text_file = open(resultLocation, "w")
-        text_file.write(resultOfClingo[1:])
-        text_file.close()
-    else:
-        print("Edge, stopped after iteration " + str(i))
-        break
-
-for i in range(0,500):
+for i in range(0,0):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
@@ -186,16 +203,31 @@ for i in range(0,500):
     text_file.write(resultOfClingo)
     text_file.close()
 
+    skipvertext = False
+    for j in resultOfClingo.split("."):
+        if "edgeCollision(" in j:
+            if not "edgeCollision(1" in j and edgeIterations != 0:
+                print("Found edge")
+                skipvertext = True
+                solveEdge()
+        if skipvertext:
+            skipvertext = False
+            continue
 
     if "ver" in resultOfClingo:
+        
+
+        
+        
+
             #creates and saves the found solution
         c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
         print("\n\nVertex - Iteration " + str(i)+ "\n")
         if "rPositionX" in resultOfClingo:
             print("No solution in vertex, iteration" + str(i))
-            continue
-        if "edge" in resultOfClingo:
-            print("Found edge in vertex, iteration" + str(i))
+            print(resultOfClingo)
+            break
+        
         
         
         for j in resultOfClingo.split("."):
@@ -203,8 +235,6 @@ for i in range(0,500):
                 print(j)
             if "hoice" in j:
                 print(j)
-
-
         text_file = open(resultLocation, "w")
         text_file.write(resultOfClingo)
         text_file.close()
