@@ -5,7 +5,7 @@
 
 % Takes output of find_conflict.lp as input
 
-edgeCollision(1,1,1,1,1,1).
+
 
 earliestVertexCollision(TMIN) :- TMIN = #min{T : vertextCollision(_,T,_,_)}.
 

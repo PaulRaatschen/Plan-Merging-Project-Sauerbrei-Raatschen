@@ -14,8 +14,6 @@ Output: Creates a new directory, named after the instance,  containing a file wh
 Needs to run in an environment which supports clingo applications
 """
 
-
-from ipaddress import collapse_addresses
 import re
 import sys #used to give .lp files in the prompt
 import ntpath
@@ -27,7 +25,7 @@ from collections import Counter #used toremove duplicates
 
 resultOfClingo = ""
 
-edgeIterations = 300
+edgeIterations = 20
 
 vertexIterations = 100
 
@@ -195,7 +193,7 @@ text_file.close()
 solveEdge()
 
 
-for i in range(0,0):
+for i in range(0,00):
 
     #creates and saves all conflicts
     c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
