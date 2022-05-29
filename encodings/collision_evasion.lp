@@ -34,10 +34,11 @@ minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}.
 {chosenStep((X,Y),T,R,D): evasionStep((X,Y),T,R,D)} = 1 :- minDistance(D). 
 
 % Time that evading robot has to wait
-waitTime(W) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
-waitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),|X-X'|+|Y-Y'| == 1, W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
-waitTime(W) :- firstedgeCollision((X0,Y0),_,_,R,R',onewaiting),chosenStep((X,Y),T0,R,D), rPositionX(R',(X0,Y0),T1),rPositionX(R',(X1,Y1),T2), |X0-X1|+|Y0-Y1| = 1, T1 < T2, W = T2-T0-1 .
+lwaitTime(W) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
+lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),|X-X'|+|Y-Y'| == 1, W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
+lwaitTime(W) :- firstedgeCollision((X0,Y0),_,_,R,R',onewaiting),chosenStep((X,Y),T0,R,D), rPositionX(R',(X0,Y0),T1),rPositionX(R',(X1,Y1),T2), |X0-X1|+|Y0-Y1| = 1, T1 < T2, W = T2-T0-1 .
 
+waitTime(W) :-lwaitTime(W), W = #max{D: lwaitTime(D)}.
 %waitTime(W) :- chosenStep((X,Y),T0,R,0), rPositionX(R,(X',Y'),T0-1),rPositionX(R',(X',Y'),TD), W = TD- (T0-1).
 
 
@@ -63,8 +64,8 @@ rPosition(R,(X,Y),T) :- chosenStep((X,Y),T,R,D).
 % Add waiting moves until the non evading robot has freed the path (not necessary)
 %occurs(object(robot,R),action(move,(0,0)),T+1) :- occurs(object(robot,R),action(move,(0,0)),T), chosenStep((X,Y),T0,R,D), waitTime(W), T < T0 + W,firstedgeCollision(_,_,_,R',R).
 timeToWait(T0..T0 + W):- chosenStep((X,Y),T0,R,D), waitTime(W).
-{rPosition(R,(X,Y),T): chosenStep((X,Y),T0,R,D), timeToWait(T)} = W+1 :- waitTime(W).
-
+%{rPosition(R,(X,Y),T): chosenStep((X,Y),T0,R,D), timeToWait(T)} = W+1 :- waitTime(W).
+rPosition(R,(X,Y),T):- chosenStep((X,Y),T0,R,D), timeToWait(T).
 % Move evading robot back onto original path 
 %occurs(object(robot,R),action(move,(DX,DY)),T0 + W + 1) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1),firstedgeCollision(_,_,_,R,R'), DX = X'-X, DY = Y'-Y, waitTime(W).
 rPosition(R,(X',Y'),T0+W + 1):- chosenStep((X,Y),T0,R,D), waitTime(W), rPositionX(R,(X',Y'),T0-1).
