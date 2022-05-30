@@ -1,5 +1,7 @@
 #program base.
 
+#const horizon = 15.
+
 #program robot(r).
 
 {move(r,D,T) : direction(D)} 1 :- time(T).
@@ -10,7 +12,7 @@ rPosition(r,C,T) :- rPosition(r,C,T-1), not move(r,_,T), time(T).
 
 :- rPosition(r,(X,Y),_), not node(X,Y).
 
-goalReached(r) :- rPosition(r,(X,Y),H), goal(r,(X,Y)), horizon(H).
+goalReached(r) :- rPosition(r,(X,Y),H), goal(r,(X,Y)).
 
 :- not goalReached(r).
 

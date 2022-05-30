@@ -1,6 +1,9 @@
 #include <incmode>.
 
+#include "./setup.lp".
+
 #const r = 1.
+
 
 #program step(t).
 
