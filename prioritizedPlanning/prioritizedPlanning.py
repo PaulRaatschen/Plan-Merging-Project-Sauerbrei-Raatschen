@@ -58,10 +58,6 @@ class prioritizedPlanner:
 
         for robot in self.robots:
 
-            print(robot)
-
-            print(preprocessing_facts)
-
             self.plans[robot] = []
 
             clt_main = clingo.Control(["0","--opt-mode=opt"])
