@@ -14,16 +14,20 @@ import re
 import sys #used to give .lp files in the prompt
 import ntpath
 import clingo
-from os import mkdir #to create a folder which saves the results
+from os import listdir, mkdir #to create a folder which saves the results
 from os import system #To ropen viz after executing system('viz')
-from collections import Counter #used toremove duplicates
+from collections import Counter #used to remove duplicates
 
 
 resultOfClingo = ""
 
-edgeIterations = 100
+edgeIterations = 200
 
 vertexIterations = 100
+
+ListOfConflicts = []
+
+MultipleTimesOccuringConflicts = []
 
 #standard clingo function
 class Application:
@@ -74,6 +78,8 @@ def solveEdge():
         global resultLocation
         global colissionLocation
         global inputs
+        global ListOfConflicts
+        global MultipleTimesOccuringConflicts
         #creates and saves all conflicts
         c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
 
@@ -116,16 +122,23 @@ def solveEdge():
                 
                 if "conflict" in j:
                     
+                    if j in ListOfConflicts:
+                        print("R")
+                        MultipleTimesOccuringConflicts.append(j+".")
+                    ListOfConflicts.append(j)
                     print(j + "\n")
                 if "wa" in j:
                     print(j)
 
             #resultOfClingo =".".join(resultOfClingo) + "."
             text_file = open(resultLocation, "w")
-            text_file.write(resultOfClingo[1:])
+            text_file.write(resultOfClingo[1:]+ "".join(MultipleTimesOccuringConflicts))
+            
             text_file.close()
+            
         else:
             print("Edge, stopped after iteration " + str(i))
+            MultipleTimesOccuringConflicts.clear()
             break
 
 #change here the last element to change conflict solving method
