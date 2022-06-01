@@ -13,9 +13,9 @@ earliestVertexCollision(TMIN) :- TMIN = #min{T : vertextCollision(_,T,_,_)}.
 %Determines the longest time period a robot needs to get from his starting position to his end position in the given instance
 longestTime(T) :-  T = #max{D: rPositionX(R,(X,Y),D),firstvertextCollision(_,_,R,R')}.
 
+%Chooses Robot to wait pased on a priority system
 choice(R',prio(2)):- firstvertextCollision((X0,Y0),T0,R,R'), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0+1),R!=R'.
 choice(R',prio(2)):- firstvertextCollision((X0,Y0),T0,R',R), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0+1),R!=R'.
-
 choice(R',prio(1)):- firstvertextCollision((X0,Y0),T0,R,R'), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0),R!=R'.
 choice(R',prio(1)):- firstvertextCollision((X0,Y0),T0,R',R), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0),R!=R'.
 
@@ -45,6 +45,5 @@ rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y), T), finalChoice(R'), R!=R'.
 #show firstvertextCollision/4.
 #show choice/2.
 #show finalChoice/1.
-%#show edgeCollision/6.
 
 
