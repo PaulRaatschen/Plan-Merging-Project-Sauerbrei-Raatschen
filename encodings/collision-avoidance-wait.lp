@@ -5,6 +5,8 @@
 
 % Takes output of find_conflict.lp as input
 
+
+
 earliestVertexCollision(TMIN) :- TMIN = #min{T : vertextCollision(_,T,_,_)}.
 
 {firstvertextCollision((X0,Y0),T0,R,R'): vertextCollision((X0,Y0),T0,R,R'), earliestVertexCollision(T0)} = 1.
@@ -45,6 +47,6 @@ rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y), T), finalChoice(R'), R!=R'.
 #show firstvertextCollision/4.
 #show choice/2.
 #show finalChoice/1.
-%#show edgeCollision/6.
+#show edgeCollision/6.
 
 
