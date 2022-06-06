@@ -1,8 +1,6 @@
-#program base.
+#include "./setup.lp".
 
-#const horizon = 15.
-
-#program robot(r).
+time(1..h). 
 
 {move(r,D,T) : direction(D)} 1 :- time(T).
 
@@ -12,7 +10,7 @@ rPosition(r,C,T) :- rPosition(r,C,T-1), not move(r,_,T), time(T).
 
 :- rPosition(r,(X,Y),_), not node(X,Y).
 
-goalReached(r) :- rPosition(r,(X,Y),H), goal(r,(X,Y)).
+goalReached(r) :- rPosition(r,(X,Y),T), goal(r,(X,Y)), time(T).
 
 :- not goalReached(r).
 
@@ -22,9 +20,9 @@ goalReached(r) :- rPosition(r,(X,Y),H), goal(r,(X,Y)).
 % Edge Conflict
 :- rPosition(r,(X,Y),T), move(r,(DX,DY),T+1), rPosition(R,(X+DX,Y+DY),T), rPosition(R,(X,Y),T+1), R!=r.
 
-moves(r,N) :- N = #sum{ T : move(r,_,T) }.
+cost(r,C) :- C = #sum{ T : move(r,_,T) }.
 
-#minimize{ N : moves(r,N) }.
+#minimize{ C : cost(r,C) }.
 
 #show.
 #show rPosition/3.
