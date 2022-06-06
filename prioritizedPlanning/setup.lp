@@ -1,10 +1,6 @@
 
 % Setup
 
-#const horizon = 15.
-
-%horizon(H) :- 10*H = #count{ X : node(X,Y)}.
-
 robot(R) :- init(object(robot,R),_).
 
 node(X,Y) :- init(object(node,_),value(at,(X,Y))).
@@ -15,10 +11,14 @@ rPosition(R,(X,Y),0) :- init(object(robot,R),value(at,(X,Y))).
 
 direction((X,Y)) :- X=-1..1, Y=-1..1, |X+Y|=1.
 
-time(1..horizon). % :- horizon(H). 
-
 numOfRobots(N) :- N = #count{ R : robot(R)}.
 
+#show robot/1.
+#show node/2.
+#show goal/2.
+#show rPosition/3.
+#show direction/1.
+#show numOfRobots/1.
 
 
 

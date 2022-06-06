@@ -1,7 +1,7 @@
-import clingo
+from clingo import Control, Number, Function
 import argparse
 
-class prioritizedPlanner:
+class PrioritizedPlanner:
 
     def __init__(self):
 
@@ -19,80 +19,101 @@ class prioritizedPlanner:
 
         self.robots = []
 
-        self.positions = ""
+        self.preprocessing_facts = []
 
-        self.preprocessing = "./setup.lp"
+        self.position_facts = []
 
-        self.sap = "./singleAgentPlanning.lp"
+        self.preprocessing_file = "./setup.lp"
 
-        self.instance = args.instance
+        self.sap_file = "./incrementalPathfinding.lp"
 
-        self.main()
+        self.instance_file = args.instance
+
+        self.solve()
 
 
-    def main(self):
+    def preprocessing_parser(self,model):
 
-        ctl_pre = clingo.Control()
+        if not model:
+            return
 
-        preprocessing_facts = ""
+        for atom in model.symbols(atoms=True):
+            if(atom.name == "init"):
+                self.model.append(atom)
 
-        ctl_pre.load(self.instance)
-
-        ctl_pre.load(self.preprocessing)
-
-        ctl_pre.ground([("base",[])])
-
-        with ctl_pre.solve(yield_=True) as handle:
-
-            model = handle.model()
-
-            for atom in model.symbols(shown=True):
-
-                if(atom.name == "init"): self.model.append(atom)
-
-                else:
-                    preprocessing_facts += f"{atom}. "
-
-                if(atom.name == "numOfRobots"):
+            elif(atom.name == "numOfRobots"):
                     self.robots = list(range(1,atom.arguments[0].number+1))
+
+            else:
+                self.preprocessing_facts.append(atom)
+
+    def main_parser(self,model,robot):
+        if not model:
+            return
+
+        for atom in model.symbols(shown=True):
+            if(atom.name == "rPosition"):
+                self.position_facts.append(atom)
+            else:
+                self.plans[robot].append(atom)
+                self.model.append(atom)
+
+    def solve(self):
+
+        ctl = Control(arguments=["-Wnone"])
+
+        ctl.load(self.instance_file)
+
+        ctl.load(self.preprocessing_file)
+
+        ctl.ground([("base",[])])
+
+        ctl.solve(on_model=self.preprocessing_parser)
 
         for robot in self.robots:
 
-            print(robot)
-
             self.plans[robot] = []
 
-            clt_main = clingo.Control(["0","--opt-mode=opt"])
+            self.plan_path(robot)
 
-            clt_main.load(self.sap)
-
-            clt_main.add("base",[],preprocessing_facts)
-
-            if self.positions : clt_main.add("base",[],self.positions)
-
-            clt_main.ground([("base",[]),("robot",[clingo.Number(robot)])])
-
-            with clt_main.solve(yield_=True) as handle:
-
-                model = handle.model()
-
-                for atom in model.symbols(shown=True):
-
-                    if(atom.name == "occurs"): 
-
-                        self.plans[robot].append(atom)
-
-                        self.model.append(atom)
-
-                    if(atom.name == "rPosition"): self.positions += f"{atom}. "
-
-            self.iteration += 1
-
-        with open('plan.lp','w') as output:
+        with open('plan3.lp','w') as output:
 
             for atom in self.model:
 
-                output.write(f"{atom}.")
+                output.write(f"{atom}. ")
+
+    def plan_path(self,robot):
+        
+        ctl = Control(["--opt-mode=opt",f"-c r={robot}","-Wnone"])
+
+        ctl.load(self.sap_file)
+
+        for atom in self.preprocessing_facts:
+            ctl.add("base",[],f"{atom}.")
+
+        for atom in self.position_facts:
+            ctl.add("base",[],f"{atom}.")
+
+        ctl.add("check", ["t"], "#external query(t).")
+
+        imax = 50
+        imin = 0
+  
+        ret, step = None, 0
+
+        while((step < imax) and (ret is None or step < imin or (not ret.satisfiable))):
+
+            parts = []
+            parts.append(("check", [Number(step)]))
+            if step > 0:
+                ctl.release_external(Function("query", [Number(step - 1)]))
+                parts.append(("step", [Number(step)]))
+            else:
+                parts.append(("base", []))
+
+            ctl.ground(parts)
+            ctl.assign_external(Function("query", [Number(step)]), True)
+            ret, step = ctl.solve(on_model=lambda m : self.main_parser(m,robot)), step + 1   
 
 if __name__ == "__main__":
-    prioritizedPlanner()
+    PrioritizedPlanner()
