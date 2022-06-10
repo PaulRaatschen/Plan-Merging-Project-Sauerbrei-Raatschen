@@ -13,12 +13,7 @@ direction((X,Y)) :- X=-1..1, Y=-1..1, |X+Y|=1.
 
 numOfRobots(N) :- N = #count{ R : robot(R)}.
 
-#show robot/1.
-#show node/2.
-#show goal/2.
-#show rPosition/3.
-#show direction/1.
-#show numOfRobots/1.
+
 
 
 

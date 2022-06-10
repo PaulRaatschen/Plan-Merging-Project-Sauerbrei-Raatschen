@@ -7,9 +7,10 @@
 
 {move(r,D,t) : direction(D)} 1.
 
+:- { rPosition(r,C,t) } != 1.
+
 rPosition(r,(X+DX,Y+DY),t) :- rPosition(r,(X,Y),t-1), move(r,(DX,DY),t).
 
-rPosition(r,C,t) :- rPosition(r,C,t-1), not move(r,_,t).
 rPosition(r,C,t) :- rPosition(r,C,t-1), not move(r,_,t).
 
 :- rPosition(r,(X,Y),_), not node(X,Y).
@@ -20,11 +21,12 @@ rPosition(r,C,t) :- rPosition(r,C,t-1), not move(r,_,t).
 % Edge Conflict
 :- rPosition(r,(X,Y),t-1), move(r,(DX,DY),t), rPosition(R,(X+DX,Y+DY),t-1), rPosition(R,(X,Y),t), R!=r.
 
+% Avoid stationary robots
+:- rPosition(r,(X,Y),t), goal(R,(X,Y)), rPosition(R,(X,Y),_), r!=R.
+
 #program check(t).
 
-goalReached(r) :- rPosition(r,(X,Y),t), goal(r,(X,Y)).
-
-:- not goalReached(r), query(t).
+:- not goal(r,(X,Y)), rPosition(r,(X,Y),t), query(t).
 
 #show.
 #show rPosition/3.
