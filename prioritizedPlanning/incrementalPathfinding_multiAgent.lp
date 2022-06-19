@@ -20,8 +20,9 @@ conflict(R,R',t) :- rPosition(R,(X,Y),t), rPosition(R',(X,Y),t), R!=R.
 % Edge Conflict
 conflict(R,R',t) :- rPosition(R,(X,Y),t-1), move(R,(DX,DY),t), rPosition(R',(X+DX,Y+DY),t-1), rPosition(R',(X,Y),t), R!=R.
 
-% Avoid stationary robots
-conflict(R,R',t) :- rPosition(R,(X,Y),_), goal(R',(X,Y)), goalReached(R',T), R!=R'.
+% Avoid robots in their goal and passing over r when it is done
+:- rPosition(r,(X,Y),t), goal(R,(X,Y)), rPosition(R,(X,Y),T),t >=T, r!=R.
+:- rPosition(r,(X,Y),t), goal(r,(X,Y)), rPosition(R,(X,Y),T),t <=T, r!=R.
 
 #program check(t).
 
