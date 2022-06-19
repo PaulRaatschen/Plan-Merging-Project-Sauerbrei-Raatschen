@@ -1,0 +1,229 @@
+import argparse
+import random
+
+
+class GenerateInstance:
+    def __init__(self):
+
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument("width", type=int)
+
+        parser.add_argument("height", type=int)
+
+        parser.add_argument("numberOfRobots", type=int)
+
+        parser.add_argument("mapType", type=str)
+
+        parser.add_argument("-hLines","--horizontalLines",default = 3 ,type=int)
+        parser.add_argument("-vLines","--verticalLines",default = 3 ,type=int)
+
+        parser.add_argument("-nRooms","--numberOfRooms",default = 3 ,type=int)
+
+        parser.add_argument("-cr", "--clusterRobots", default=False, action="store_true")
+        parser.add_argument("-cs", "--clusterShelves", default=False, action="store_true")
+
+        #parser.add_argument("-o", "--optimize", default=False, action="store_true")
+
+        args = parser.parse_args()
+
+        self.width = args.width
+
+        self.height = args.height
+
+        self.numberOfRobots = args.numberOfRobots
+
+        self.mapType = args.mapType
+        self.horizontalLines = args.horizontalLines
+        self.verticalLines = args.verticalLines
+        self.numberOfRooms = args.numberOfRooms
+
+        self.clusterRobots = args.clusterRobots
+        self.clusterShelves = args.clusterShelves
+
+        self.generate()
+
+    def generate(self):
+        
+        self.Field = [([0] * self.width) for x in range(self.height)]
+
+        self.placeWalls()
+
+        self.placeRobots()
+        
+        self.placeShelves()
+
+        #print(self.Field)
+
+        self.saveField()
+
+        
+
+    def placeWalls(self):
+
+        if self.mapType == "Grid":
+            for i in range(0,self.horizontalLines):
+
+                for j in range(0,self.width):
+                    y = i+((self.height-self.horizontalLines)//(self.horizontalLines))*(i+1)
+                    self.Field[y][j] = 1
+                    
+
+            for i in range(0,self.verticalLines):
+
+                for j in range(0,self.height):
+                    x = i+((self.width-self.verticalLines)//(self.verticalLines))*(i+1)
+                    self.Field[j][x] = 1
+
+            
+            for i in range(0,self.height-1):
+                if self.Field[i][0] == 1:
+                    x = (self.width-self.verticalLines)//(self.verticalLines)//2
+                    for j in range(0,self.verticalLines):
+                        
+                        
+
+                        self.Field[i][x] = 0
+                        x = x + (self.width-self.verticalLines)//(self.verticalLines) +1
+
+            for i in range(0,self.width-1):
+                if self.Field[0][i] == 1:
+                    y = ((self.height-self.horizontalLines)//(self.horizontalLines)//2)
+                    for j in range(0,self.horizontalLines):
+                        
+
+                        self.Field[y][i] = 0
+                        y = y + (self.height-self.horizontalLines)//(self.horizontalLines) + 1
+        elif self.mapType == "Rooms":
+            for i in range(0,self.numberOfRooms):
+
+
+                while True:
+                    x1 = random.randint(0,self.width-1)
+                    y1 = random.randint(0,self.height-1)
+                    x2 = random.randint(0,self.width-1)
+                    y2 = random.randint(0,self.height-1)
+                    if(abs(x1 - x2) > 2):
+                        if(abs(y1 - y2) > 2):
+                            break
+
+                    
+
+
+                for i in range(min(x1,x2),max(x1,x2)+1):
+                    self.Field[y1][i] = 1
+                    self.Field[y2][i] = 1
+                for i in range(min(y1,y2),max(y1,y2)+1):
+                    self.Field[i][x1] = 1
+                    self.Field[i][x2] = 1
+                while True:
+                    randomint = random.randint(0,3)
+                    if randomint == 0:
+                        if(y1 == 0 or y1 == self.height-1):
+                            continue
+                        doorplacement = random.randint(min(x1,x2),max(x1,x2))
+                        if(self.Field[y1+1][doorplacement] == 0 and self.Field[y1-1][doorplacement] == 0):
+                            self.Field[y1][doorplacement] = 0
+                            break
+                    elif randomint == 1:
+                        if(y2 == 0 or y2 == self.height-1):
+                            continue
+                        doorplacement = random.randint(min(x1,x2),max(x1,x2))
+                        if(self.Field[y2+1][doorplacement] == 0 and self.Field[y2-1][doorplacement] == 0):
+                            self.Field[y2][doorplacement] = 0
+                            break
+                    elif randomint == 2:
+                        if(x1 == 0 or x1 == self.width-1):
+                            continue
+                        doorplacement = random.randint(min(y1,y2),max(y1,y2))
+                        
+                        if(self.Field[doorplacement][x1-1] == 0 and self.Field[doorplacement][x1+1] == 0):
+                            self.Field[doorplacement][x1] = 0
+                            break
+                    elif randomint == 3:
+                        if(x2 == 0 or x2 == self.width-1):
+                            continue
+                        doorplacement = random.randint(min(y1,y2),max(y1,y2))
+                        if(self.Field[doorplacement][x2-1] == 0 and self.Field[doorplacement][x2+1] == 0):
+                            self.Field[doorplacement][x2] = 0
+                            break
+                
+                
+
+
+            
+
+
+    def placeRobots(self):
+        #Place Robots
+        if self.clusterRobots:
+            pass
+        else:
+            for i in range(0,self.numberOfRobots):
+                
+                while True:
+
+                    randomX = random.randint(0,self.width-1)
+                    randomY = random.randint(0,self.height-1)
+                    
+                    if self.Field[randomY][randomX] == 0:
+                            self.Field[randomY][randomX] = ["R" + str(i),"empty"]
+                            break
+    
+    def placeShelves(self):
+        #Place Shelves
+        if self.clusterShelves:
+            pass
+        else:
+            for i in range(0,self.numberOfRobots):
+                
+                while True:
+
+                    randomX = random.randint(0,self.width-1)
+                    randomY = random.randint(0,self.height-1)
+                    
+
+                    if self.Field[randomY][randomX] == 1: 
+                        continue
+                    if self.Field[randomY][randomX] == 0:
+                            self.Field[randomY][randomX] = ["empty","S" + str(i)]
+                            break
+                    elif self.Field[randomY][randomX][1] == "empty":
+                            self.Field[randomY][randomX][1] = ("S" + str(i))
+                            break
+
+    def saveField(self):
+        textFile = "#program base.\n\n%init\n"
+        for x in range(0,self.width):
+            for y in range(0,self.height):
+
+                if self.Field[y][x] == 1: continue
+                
+                textFile += "init(object(node, 1), value(at, ("+str(x+1)+", "+str(y+1)+"))).\n"
+                
+                if type(self.Field[y][x]) == list:
+                    if self.Field[y][x][0] != "empty":
+                        roboid = str(int(self.Field[y][x][0][1:]) + 1)
+                        textFile += "init(object(robot, "+roboid+"), value(at, ("+str(x+1)+", "+str(y+1)+"))).\n"
+                        textFile += "init(object(robot, "+roboid+"), value(energy, 0)).\n"
+                        textFile += "init(object(robot, "+roboid+"), value(max_energy, 0)).\n"
+                    if self.Field[y][x][1] != "empty":
+                        shelfid = str(int(self.Field[y][x][1][1:]) + 1)
+                        textFile += "init(object(shelf, "+shelfid+"), value(at, ("+str(x+1)+", "+str(y+1)+"))).\n"
+                        textFile += "init(object(product, "+shelfid+"), value(on, ("+shelfid+",1))).\n"
+                        textFile += "init(object(robot, "+shelfid+"), value(max_energy, 0)).\n"
+                        textFile += "init(object(order, "+shelfid+"), value(line, ("+shelfid+", 1))).\n"
+                        textFile += "init(object(order, "+shelfid+"), value(pickingstation, 0)).\n"
+
+
+        with open('generatedInstance.lp', 'w') as f:
+            f.write(textFile)
+        f.close()
+
+
+if __name__ == "__main__":
+    GenerateInstance()    
+
+        
+
+    
