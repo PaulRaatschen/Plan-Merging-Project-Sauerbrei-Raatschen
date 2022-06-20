@@ -21,7 +21,7 @@ rPosition(r,C,t) :- rPosition(r,C,t-1), not move(r,_,t).
 % Edge Conflict
 :- rPosition(r,(X,Y),t-1), move(r,(DX,DY),t), rPosition(R,(X+DX,Y+DY),t-1), rPosition(R,(X,Y),t), R!=r.
 
-% Avoid stationary robots
+% Avoid robots in their goal and passing over r when it is done
 :- rPosition(r,(X,Y),t), goal(R,(X,Y)), rPosition(R,(X,Y),T),t >=T, r!=R.
 :- rPosition(r,(X,Y),t), goal(r,(X,Y)), rPosition(R,(X,Y),T),t <=T, r!=R.
 
