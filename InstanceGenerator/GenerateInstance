@@ -95,6 +95,7 @@ class GenerateInstance:
                         self.Field[y][i] = 0
                         y = y + (self.height-self.horizontalLines)//(self.horizontalLines) + 1
         elif self.mapType == "Rooms":
+            rooms = []
             for i in range(0,self.numberOfRooms):
 
 
@@ -103,9 +104,13 @@ class GenerateInstance:
                     y1 = random.randint(0,self.height-1)
                     x2 = random.randint(0,self.width-1)
                     y2 = random.randint(0,self.height-1)
+
+
                     if(abs(x1 - x2) > 2):
                         if(abs(y1 - y2) > 2):
+                            rooms.append([[min(x1,x2),min(y1,y2)],[max(x1,x2),max(y1,y2)]])
                             break
+                    
 
                     
 

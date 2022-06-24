@@ -16,6 +16,8 @@ class PrioritizedPlanner:
 
         parser.add_argument("-o", "--optimize", default=False, action="store_true")
 
+        parser.add_argument("-v", "--verbose", default=False, action="store_true")
+
         args = parser.parse_args()
         
         self.iteration = 0
@@ -45,6 +47,8 @@ class PrioritizedPlanner:
         self.benchmark = args.benchmark
 
         self.optimize = args.optimize
+
+        self.verbose = args.verbose
 
         if self.benchmark:
             time_start = time()
@@ -134,6 +138,9 @@ class PrioritizedPlanner:
 
         for robot in self.robots:
 
+            if self.verbose:
+                print(f"Solving for robot {robot}")
+
             self.plans[robot] = ([],[])
 
             self.plan_path(robot)
@@ -151,7 +158,7 @@ class PrioritizedPlanner:
         imax = 60
 
         for robot in self.robots:
-        
+
             ctl = Control(arguments=["-Wnone",f"-c r={robot}"])
 
             ctl.load(self.nocl_sapf_file)
