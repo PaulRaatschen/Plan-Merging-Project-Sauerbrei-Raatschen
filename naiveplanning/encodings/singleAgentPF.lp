@@ -67,5 +67,5 @@ highway(            C    )   :- init(object(highway,_),        value(at,C)).
 #show init/2.
 
 
-occurs(object(robot,R), action(move,D),     T) :    move(robot(R),D,T).
+%occurs(object(robot,R), action(move,D),     T) :    move(robot(R),D,T).
 #show occurs(object(robot,R), action(move,D),     T) :    move(robot(R),D,T).

@@ -105,11 +105,11 @@ class SequentiellPlanner:
 
         self.solveEdge()
 
-        #self.solveVertex()
+        self.solveVertex()
 
         for atom in self.standard_facts:
-                print(atom)
-                print("\n")
+            print(atom)
+        print("\n")
 
         ctl = Control(arguments=["-Wnone"])
 
@@ -174,7 +174,7 @@ class SequentiellPlanner:
 
             ctl.solve(on_model=self.standard_parser)
 
-            edgeCollisionFound = False
+            self.edgeCollisionFound = False
             for atom in self.standard_facts:
                 if(atom.name == "edgeCollision"):
                     edgeCollisionFound = True
@@ -208,16 +208,22 @@ class SequentiellPlanner:
         
         while(self.vertexIterations > 0):
 
-            ctl = Control(arguments=["-Wnone"])
+            if(self.edgeCollisionFound == True):
+                
+                ctl = Control(arguments=["-Wnone"])
 
-            ctl.load(self.conflict_detection_file)
+                ctl.load(self.conflict_detection_file)
+                ctl.load(self.instance_file)
 
-            for atom in self.standard_facts:
-                ctl.add("base",[],f"{atom}.")
+                for atom in self.standard_facts:
+                
+                    ctl.add("base",[],f"{atom}.")
 
-            ctl.ground([("base",[])])
+                ctl.ground([("base",[])])
 
-            ctl.solve(on_model=self.standard_parser)
+                ctl.solve(on_model=self.standard_parser)
+            else:
+                self.edgeCollisionFound =True
 
             vertexCollisionFound = False
             for atom in self.standard_facts:
@@ -226,10 +232,10 @@ class SequentiellPlanner:
 
             self.vertexIterations = self.vertexIterations -1
 
-            #if an edge collision was found
+            #if an vertex collision was found
             if vertexCollisionFound:
 
-                #solve edge collision
+                #solve vertex collision
                 ctl = Control(arguments=["-Wnone"])
 
                 ctl.load(self.vertexSolver_file)
