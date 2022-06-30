@@ -99,15 +99,12 @@ class GenerateInstance:
             rooms = []
             for i in range(0,self.numberOfRooms):
 
-                generateAttempts = 0
-                skipRoom = False
+                
 
                 while True:
-                    generateAttempts += 1
+                    
 
-                    if(generateAttempts >= 20):
-                        skipRoom = True
-                        break
+                    
 
                     x1 = random.randint(0,self.width-1)
                     y1 = random.randint(0,self.height-1)
@@ -146,12 +143,14 @@ class GenerateInstance:
                                 self.Field[i][left] = "FutureWall"
                                 self.Field[i][right] = "FutureWall"
                             break
+                        else:
+                            break
+                            pass
                         
                             
                     
 
-                if(skipRoom):
-                    continue
+                
 
             for room in rooms:
 
@@ -166,10 +165,14 @@ class GenerateInstance:
                 for i in range(up,down+1):
                     self.Field[i][left] = 1
                     self.Field[i][right] = 1
-            for room in rooms:
-                print("door")
-                while True:
+            
+            print(str(len(rooms)) + " Räume wurden erstellt")
 
+            for room in rooms:
+                
+                
+                while True:
+                    
                     left = room[0][0]
                     right = room[1][0]
                     up = room[0][1]
