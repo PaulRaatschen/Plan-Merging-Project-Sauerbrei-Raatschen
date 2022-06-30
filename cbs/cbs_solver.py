@@ -1,5 +1,6 @@
 from __future__ import annotations
 from ast import Num
+from distutils.debug import DEBUG
 from queue import PriorityQueue
 from typing import Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model
@@ -15,7 +16,7 @@ from copy import deepcopy, copy
 
 """Logging setup"""
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(levelname)s:%(message)s')
 handler = logging.StreamHandler(stdout)
 handler.setFormatter(formatter)
@@ -26,7 +27,11 @@ parser : ArgumentParser = ArgumentParser()
 parser.add_argument("instance", type=str)
 parser.add_argument("-b", "--benchmark", default=False, action="store_true")
 parser.add_argument("-o", "--optimize", default=False, action="store_true")
-#args : Namespace = parser.parse_args()
+parser.add_argument("--debug", default=False, action="store_true")
+args : Namespace = parser.parse_args()
+
+if args.debug:
+    logger.setLevel(logging.DEBUG)
 
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
@@ -34,7 +39,7 @@ ENCODING_DIR : str = path.join(WORKING_DIR,'Encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
 SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_iterative.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
-INSTANCE_FILE : str = path.join(WORKING_DIR,'edge_cl_instance.lp')  #args.instance
+INSTANCE_FILE : str = args.instance
 
 
 class CTNode:
@@ -234,6 +239,8 @@ def main() -> None:
     
     plan, preprocessing_atoms, agents, max_horizon = preprocessing()
 
+    max_horizon *=2 
+
     root = CTNode(None,None,preprocessing_atoms)
 
     logger.debug("Initializing first node")
@@ -257,11 +264,12 @@ def main() -> None:
 
         if first_conflict:
             node1, node2 = current.branch(first_conflict,max_horizon)
-            open_queue.put(node1)
-            open_queue.put(node2)
+            if node1.cost < inf : open_queue.put(node1)
+            if node2.cost < inf : open_queue.put(node2)
                 
         else:
             solution_nodes.append(current)
+            break
 
     end_time = perf_counter()
 
