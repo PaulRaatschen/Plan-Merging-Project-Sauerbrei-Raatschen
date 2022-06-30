@@ -1,220 +1,288 @@
+from __future__ import annotations
+from ast import Num
 from queue import PriorityQueue
-from clingo import Control, Number, Function
+from typing import Dict, List, Tuple, Union
+from clingo import Control, Number, Function, Symbol, Model
+from clingo.solving import SolveResult
 from time import perf_counter
 from os import path
-from argparse import ArgumentParser
-from sys import exit
+from argparse import ArgumentParser, Namespace
+from sys import exit, stdout
 from math import inf
+import logging
+from copy import deepcopy, copy
 
 
+"""Logging setup"""
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(levelname)s:%(message)s')
+handler = logging.StreamHandler(stdout)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-WORKING_DIR = path.abspath(path.dirname(__file__))
-ENCODING_DIR = path.join(WORKING_DIR,'Encodings')
-PREPROCESSING_FILE = path.join(WORKING_DIR,'setup.lp')
-SAPF_FILE = path.join(ENCODING_DIR,'singleAgentPF_iterative.lp')
-VALIADTION_FILE = path.join(ENCODING_DIR,'validate.lp')
-
-plan = []
-agents = []
-preprocessing_atoms = []
-max_horizon = 0
-
-parser = ArgumentParser()
-
+"""Command line argument parsing"""
+parser : ArgumentParser = ArgumentParser()
 parser.add_argument("instance", type=str)
-
 parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-
 parser.add_argument("-o", "--optimize", default=False, action="store_true")
+#args : Namespace = parser.parse_args()
 
-args = parser.parse_args()
-
-INSTANCE_FILE = args.instance
-
+"""Directorys and asp files"""
+WORKING_DIR : str = path.abspath(path.dirname(__file__))
+ENCODING_DIR : str = path.join(WORKING_DIR,'Encodings')
+PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
+SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_iterative.lp')
+VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
+INSTANCE_FILE : str = path.join(WORKING_DIR,'edge_cl_instance.lp')  #args.instance
 
 
 class CTNode:
+    """
+    CTNode class represents a node in the constraint tree of the conflict based search algorithm.
+    Stores solution atoms for each agent, contraints imposed on agents paths and the total cost of all paths
 
-    def __init__(self,solution = None, constraints= None):
+    Methods:
+        __init__(self,solution : Dict[int,List[int,List[Symbol],List[Symbol]]]=None, constraints : List[Symbol]=None, atoms : List[Symbol]=None) -> None
+        low_level(self,agent : int) -> bool
+        validate_plans(self) -> List[Symbol]
+        branch(self,conflict : Symbol) -> Tuple[CTNode,CTNode]    
+    """
+
+    def __init__(self,solution : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]=None, constraints : List[Symbol]=None, atoms : List[Symbol]=None, cost : int = 0) -> None:
         self.solution = solution if solution else {}
         self.constraints = constraints if constraints else []
-        self.cost = 0
+        self.atoms = atoms
+        self.cost = cost
+
+    def __gt__(self, other : CTNode) -> bool:
+        return True if self.cost > other.cost else len(self.constraints) > len(other.constraints) if self.cost == other.cost else False
+
+    def __ge__(self, other : CTNode) -> bool:
+        return True if self.cost > other.cost else len(self.constraints) >= len(other.constraints) if self.cost == other.cost else False
+
+    def __lt__(self, other : CTNode) -> bool:
+        return not self.__ge__(other)
+
+    def __le__(self, other : CTNode) -> bool:
+        return not self.__gt__(other)
             
-    def low_level(self,agent):
+    def low_level(self,agent : int, horizon : int) -> bool:
 
-        old_cost = self.plans[agent][2] if self.plans[agent] else 0
+        old_cost : int = 0
+        agent_cost : int
+        ctl : Control = Control(['-Wnone',f'-c r={agent}'])
+        step : int = 0 
+        ret : SolveResult = None
 
-        def low_level_search_parser(model):
-            self.plans[agent] = [[],[],0]
+        def low_level_parser(model : Model, agent : int, solution : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]) -> bool:
             for atom in model.symbols(shown=True):
                 if(atom.name == 'occurs'):
-                    self.plans[agent][0].append(atom)
+                    solution[agent]['occurs'].append(atom)
                 else:
-                    self.plans[agent][1].append(atom)
+                    solution[agent]['positions'].append(atom)
+        
+        logger.debug(f"low level search invoked for agent {agent}")
 
-        ctl = Control(['-Wnone',f'-c r={agent}'])
+        if agent in self.solution:
+            old_cost = self.solution[agent]['cost']
+
+        self.solution[agent] = {'positions' : [], 'occurs' : [], 'cost' : 0}
 
         ctl.load(SAPF_FILE)
 
         with ctl.backend() as backend:
-            for atom in preprocessing_atoms + self.constraints:
+            for atom in self.atoms + self.constraints:
                 fact = backend.add_atom(atom)
                 backend.add_rule([fact])
 
-        imin, imax = 0, max_horizon
-
-        step, ret = 0, None
-
-        while ((step < imax) and (ret is None or (not ret.satisfiable))):
-                    parts = []
+        while ((step < horizon) and (ret is None or (not ret.satisfiable))):
+                    parts : List[Tuple[str,List[Symbol]]] = []
                     parts.append(("check", [Number(step)]))
                     if step > 0:
                         ctl.release_external(Function("query", [Number(step - 1)]))
                         parts.append(("step", [Number(step)]))
                     else:
                         parts.append(("base", []))
-
                     ctl.ground(parts)
                     ctl.assign_external(Function("query", [Number(step)]), True)
-                    ret, step = ctl.solve(on_model=low_level_search_parser), step + 1
-
+                    ret, step = ctl.solve(on_model=lambda model : low_level_parser(model,agent,self.solution)), step + 1
+                    
         agent_cost = inf if (ret and (not ret.satisfiable)) else step - 1
 
-        self.solution[agent][2] = agent_cost
+        self.solution[agent]['cost'] = agent_cost
+
+        logger.debug(f"low level search terminated for agent {agent} with cost {agent_cost}")
 
         self.cost += (agent_cost-old_cost)
 
-    def validate_plans(self):
+        return agent_cost < inf
 
-        def verify_parser(self,model,conflicts):
+    def validate_plans(self) -> Union[Symbol,bool]:
+
+        ctl : Control
+        conflicts : List[Symbol] = []
+
+        def validate_parser( model : Model, conflicts : List[Symbol]) -> bool:
             for atom in model.symbols(shown=True):
-                conflicts.append(atom)
+                if(atom.name == 'minConflict'):
+                    conflicts.append(atom)
+            return False
+
+        logger.debug("Validate plans invoked")
 
         ctl = Control(['-Wnone'])
 
         ctl.load(VALIADTION_FILE)
 
         with ctl.backend() as backend:
-            for plan in self.solution.values():
-                for instance in plan:
-                    fact = backend.add_atom(instance[1])
+            for instance in self.solution.values():
+                for atom in instance['positions']:
+                    fact = backend.add_atom(atom)
                     backend.add_rule([fact])
 
         ctl.ground([('base',[])])
 
-        conflicts = []
+        ctl.solve(on_model=lambda model : validate_parser(model,conflicts))
 
-        ctl.solve(on_model=lambda model : verify_parser(self,model,conflicts))
+        return conflicts[0] if conflicts else False
 
-        return conflicts
+    def branch(self,conflict : Symbol, max_horizon : int) -> Tuple[CTNode,CTNode]:
 
-    def branch(self,conflict):
+        logger.debug("branch invoked")
 
-        node1 = CTNode(self.solution,self.constraints)
-        node2 = CTNode(self.solution,self.constraints)
+        node1 : CTNode = CTNode(deepcopy(self.solution),copy(self.constraints),self.atoms,self.cost)
+        node2 : CTNode = CTNode(deepcopy(self.solution),copy(self.constraints),self.atoms,self.cost)
 
-        ctype = conflict.arguments[0].string
-        agent1 = conflict.arguments[1]
-        agent2 = conflict.arguments[2]
-        time = conflict.arguments[4]
+        conflict_type : str = conflict.arguments[0].name
+        agent1 : Number = conflict.arguments[1]
+        agent2 : Number  = conflict.arguments[2]
+        time : Number = conflict.arguments[4]
 
-        if(ctype == 'vertex'):
-            loc = conflict.arguments[3]
+        if(conflict_type == 'vertex'):
+            loc : Function = conflict.arguments[3]
             node1.constraints.append(Function(name="constraint", arguments=[agent1,loc,time]))
             node2.constraints.append(Function(name="constraint", arguments=[agent2,loc,time]))
 
-
         else:
-            loc = conflict.arguments[3][0]
-            move = conflict.arguments[3][1]
-            node1.constraints.append(Function(name="constraint", arguments=[agent1,loc,move,time]))
-            node2.constraints.append(Function(name="constraint", arguments=[agent2,loc,move,time]))
+            loc1 : Function = conflict.arguments[3].arguments[0]
+            loc2 : Function = conflict.arguments[3].arguments[1]
+            move1 : Function = Function('',[Number(loc2.arguments[0].number-loc1.arguments[0].number),Number(loc2.arguments[1].number-loc1.arguments[1].number)],True)
+            move2 : Function = Function('',[Number(loc1.arguments[0].number-loc2.arguments[0].number),Number(loc1.arguments[1].number-loc2.arguments[1].number)],True)
+            node1.constraints.append(Function(name="constraint", arguments=[agent1,loc1,move1,time]))
+            node2.constraints.append(Function(name="constraint", arguments=[agent2,loc2,move2,time]))
 
-        node1.cost += node1.low_level(agent1.number)
-        node2.cost += node2.low_level(agent2.number)
+        node1.low_level(agent1.number,max_horizon)
+        node2.low_level(agent2.number,max_horizon)
 
         return node1, node2
 
         
-        
-def preprocessing():
+def preprocessing() -> Tuple[Control, List[int], int, List[Symbol]]:
 
-    def preprocessing_parser(model):
+    results : Dict[str,Union[List[Symbol],int,List[int]]] = {}
+
+    def preprocessing_parser(model : Model, results : Dict[str,Union[List[Symbol],List[int],int]]) -> bool:
+
+        results['inits'] = []
+        results['atoms'] = []
+        results['horizon'] = 0
+        results['agents'] = 0
+
         for atom in model.symbols(atoms=True):
             if(atom.name == 'init'):
-                plan.append(atom)
+                results['inits'].append(atom)
             elif(atom.name == 'numOfRobots'):
-                agents = list(range(1,atom.arguments[0].number+1))
+                results['agents'] = list(range(1,atom.arguments[0].number+1))
             elif(atom.name == 'numOfNodes'):
-                max_horizon = atom.arguments[0].number
+                results['horizon'] = atom.arguments[0].number
             else:
-                preprocessing_atoms.append(atom)
+                results['atoms'].append(atom)
 
-        ctl = Control(["-Wnone"])
+        return False
 
-        ctl.load(INSTANCE_FILE)
+    logger.debug("Preprocessing invoked")
 
-        ctl.load(PREPROCESSING_FILE)
+    ctl : Control = Control(["-Wnone"])
 
-        ctl.ground([("base",[])])
+    ctl.load(INSTANCE_FILE)
 
-        ctl.solve(on_model=preprocessing_parser(model))
+    ctl.load(PREPROCESSING_FILE)
 
-def main():
+    ctl.ground([("base",[])])
 
-        start_time = perf_counter()
+    ctl.solve(on_model=lambda model : preprocessing_parser(model,results))
+
+    return results['inits'], results['atoms'], results['agents'], results['horizon']
+
+
+def main() -> None:
+
+    plan : List[Symbol] = []
+    agents : Dict[int,List[int,List[Symbol]]] = {}
+    preprocessing_atoms : List[Symbol] = []
+    open_queue : PriorityQueue = PriorityQueue()
+    solution_nodes : List[CTNode] = []
+    preprocessing_atoms : List[Symbol] = []
+    max_horizon : int
+    root : CTNode
+    current : CTNode
+
+    logger.debug("Programm started")
+
+    start_time : float = perf_counter()
     
-        preprocessing()
+    plan, preprocessing_atoms, agents, max_horizon = preprocessing()
 
-        openQueue = PriorityQueue()
-        
-        solutionNodes = []
+    root = CTNode(None,None,preprocessing_atoms)
 
-        root = CTNode()
+    logger.debug("Initializing first node")
 
-        for agent in agents:
-            low_level(agent)
+    for agent in agents:
+        root.low_level(agent,max_horizon)
 
-        if(root.cost == inf):
-            print("No initial solution found!")
-            exit()
+    if(root.cost == inf):
+        logger.info("No initial solution found!")
+        exit()
             
-        openQueue.put((root.cost,root))
+    open_queue.put(root)
 
-        while openQueue:
+    logger.debug("While loop started")
 
-            p = openQueue.get()[1]
+    while not  open_queue.empty():
 
-            conflicts = p.validate_plans()
+        current = open_queue.get()
 
-            if conflicts:
-                node1, node2 = p.branch(conflicts[0])
-                openQueue.put((node1.cost,node1))
-                openQueue.put((node2.cost,node2))
+        first_conflict = current.validate_plans()
+
+        if first_conflict:
+            node1, node2 = current.branch(first_conflict,max_horizon)
+            open_queue.put(node1)
+            open_queue.put(node2)
                 
-            else:
-                solutionNodes.append(p)
-
-        end_time = perf_counter()
-
-        if solutionNodes:
-            bestSolution = solutionNodes[0]
-
-            with open("plan.lp",'w') as output:
-
-                for atom in plan:
-                    output.write(f"{atom}. ")
-                for plan in bestSolution.solution.values():
-                    for instance in plan:
-                        output.write(f"{instance[0]}. ")
-
-            print("Solution found")
-
-            if args.benchmark:
-                print(f'Execution Time: {end_time-start_time}s')
-
         else:
-            print("No solution found")
+            solution_nodes.append(current)
+
+    end_time = perf_counter()
+
+    if solution_nodes:
+        best_solution = solution_nodes[0]
+
+        with open("plan.lp",'w') as output:
+
+            for atom in plan:
+                output.write(f"{atom}. ")
+            for plan in best_solution.solution.values():
+                for instance in plan['occurs']:
+                    output.write(f"{instance}. ")
+
+        logger.info("Solution found")
+
+        if args.benchmark:
+            logger.info(f'Execution Time: {end_time-start_time}s')
+
+    else:
+        logger.info("No solution found")
     
 
 if __name__ == '__main__':
