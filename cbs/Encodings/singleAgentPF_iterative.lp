@@ -24,7 +24,9 @@ position(r,C,t) :- position(r,C,t-1), not move(r,_,t).
 % Avoid stationary robots
 :- position(r,(X,Y),t), goalReached(R',T), r!=R', t >= T.
 
-:- constraint(r,C,T), position(r,C,T).
+:- constraint(r,C,t), position(r,C,t).
+
+:- constraint(r,C,M,t), position(r,C,t), move(r,M,t).
 
 #program check(t).
 #external query(t).
