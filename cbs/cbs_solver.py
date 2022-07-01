@@ -1,6 +1,4 @@
 from __future__ import annotations
-from ast import Num
-from distutils.debug import DEBUG
 from queue import PriorityQueue
 from typing import Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model
@@ -26,8 +24,9 @@ logger.addHandler(handler)
 parser : ArgumentParser = ArgumentParser()
 parser.add_argument("instance", type=str)
 parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-parser.add_argument("-o", "--optimize", default=False, action="store_true")
+parser.add_argument("-g", "--greedy", default=False, action="store_true")
 parser.add_argument("--debug", default=False, action="store_true")
+
 args : Namespace = parser.parse_args()
 
 if args.debug:
@@ -71,7 +70,7 @@ class CTNode:
 
     def __le__(self, other : CTNode) -> bool:
         return not self.__gt__(other)
-            
+
     def low_level(self,agent : int, horizon : int) -> bool:
 
         old_cost : int = 0
@@ -232,46 +231,59 @@ def main() -> None:
     max_horizon : int
     root : CTNode
     current : CTNode
+    nodecount : int = 1
+    searchspace : int 
 
-    logger.debug("Programm started")
+    try:
 
-    start_time : float = perf_counter()
-    
-    plan, preprocessing_atoms, agents, max_horizon = preprocessing()
+        logger.debug("Programm started")
 
-    max_horizon *=2 
+        start_time : float = perf_counter()
+        
+        plan, preprocessing_atoms, agents, max_horizon = preprocessing()
 
-    root = CTNode(None,None,preprocessing_atoms)
+        searchspace = 2 * max_horizon  * max_horizon ** len(agents)
 
-    logger.debug("Initializing first node")
+        max_horizon *=2 
 
-    for agent in agents:
-        root.low_level(agent,max_horizon)
+        root = CTNode(None,None,preprocessing_atoms)
 
-    if(root.cost == inf):
-        logger.info("No initial solution found!")
-        exit()
-            
-    open_queue.put(root)
+        logger.debug("Initializing first node")
 
-    logger.debug("While loop started")
+        for agent in agents:
+            root.low_level(agent,max_horizon)
 
-    while not  open_queue.empty():
-
-        current = open_queue.get()
-
-        first_conflict = current.validate_plans()
-
-        if first_conflict:
-            node1, node2 = current.branch(first_conflict,max_horizon)
-            if node1.cost < inf : open_queue.put(node1)
-            if node2.cost < inf : open_queue.put(node2)
+        if(root.cost == inf):
+            logger.info("No initial solution found!")
+            exit()
                 
-        else:
-            solution_nodes.append(current)
-            break
+        open_queue.put(root)
+
+        logger.debug("While loop started")
+
+        while not  open_queue.empty():
+
+            current = open_queue.get()
+
+            nodecount += 1
+
+            first_conflict = current.validate_plans()
+
+            if first_conflict:
+                node1, node2 = current.branch(first_conflict,max_horizon)
+                if node1.cost < inf : open_queue.put(node1)
+                if node2.cost < inf : open_queue.put(node2)
+                    
+            else:
+                solution_nodes.append(current)
+                break
+
+    except KeyboardInterrupt:
+        logger.info("Search terminated by keyboard interrupt")
 
     end_time = perf_counter()
+
+    logger.info(f'{nodecount/searchspace : .2f}% of search space exhausted')
 
     if solution_nodes:
         best_solution = solution_nodes[0]
@@ -294,4 +306,5 @@ def main() -> None:
     
 
 if __name__ == '__main__':
-    main()
+        main()
+
