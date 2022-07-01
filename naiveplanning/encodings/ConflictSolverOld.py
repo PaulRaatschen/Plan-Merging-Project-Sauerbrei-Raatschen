@@ -20,9 +20,9 @@ from collections import Counter #used to modify Strings, here to remove duplicat
 
 
 
-edgeIterations = 1000 #number of run edge iterations
+edgeIterations = 500 #number of run edge iterations
 
-vertexIterations = 100 #number of run vertext iterations
+vertexIterations = 500 #number of run vertext iterations
 
 numberOfRobots = 30 #max number of how many robots the instance has, can be higher then the total amount
 
@@ -202,66 +202,6 @@ text_file = open(resultLocation, "w")
 text_file.write(resultOfClingo)
 text_file.close()
 
-for i in range(1,vertexIterations+1):
-
-    #creates and saves all conflicts
-    c = clingo.clingo_main(Application(sys.argv[0]), [inputs[2],resultLocation ,"--outf=3"])
-    text_file = open(colissionLocation, "w")
-    text_file.write(resultOfClingo)
-    text_file.close()
-
-    #variable to say if vertex solving should be skipped due to edge running prio
-    skipvertex = False
-
-    # for j in resultOfClingo.split("."):
-    #     #if edge collision gets found
-    #     if "edgeCollision(" in j:
-    #         #not placeholder edge collision and program allowed to solve more edge collisions
-    #         if not "edgeCollision(1" in j and edgeIterations != 0:
-    #             print("Found edge during vertex collision, solving it")
-    #             skipvertex = True
-    #             solveEdge()
-    #     if skipvertex:
-    #         skipvertex = False
-    #         continue
-
-    #if vertex collision was found
-    if "vertex" in resultOfClingo:
-        
-
-        
-        
-
-        #creates and saves the found solution
-        c = clingo.clingo_main(Application(sys.argv[0]), [inputs[4],colissionLocation ,"--outf=3"])
-        print("\n\nVertex - Iteration " + str(i)+ "\n")
-        
-        #if the vertex collision file failed
-        if "rPositionX" in resultOfClingo:
-            print("No solution in vertex, iteration" + str(i))
-            print(resultOfClingo)
-            break
-        
-        
-        
-        for j in resultOfClingo.split("."):
-            #print solved vertex collision
-            if "first" in j:
-                print(j)
-            #print choice, which robot waited
-            if "hoice" in j:
-                print(j)
-        
-        #save all
-        text_file = open(resultLocation, "w")
-        text_file.write(resultOfClingo)
-        text_file.close()
-        
-    else:
-        print("Vertex. stopped after iteration " + str(i))
-        break
-
-#solves edge collision
 solveEdge()
 
 
