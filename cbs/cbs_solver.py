@@ -30,7 +30,7 @@ parser.add_argument("-o", "--optimize", default=False, action="store_true")
 
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
-ENCODING_DIR : str = path.join(WORKING_DIR,'Encodings')
+ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
 SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_iterative.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
