@@ -26,7 +26,9 @@ position(r,C,t) :- position(r,C,t-1), not move(r,_,t).
 
 :- constraint(r,C,t), position(r,C,t).
 
-:- constraint(r,C,M,t), position(r,C,t), move(r,M,t).
+:- constraint(r,C,M,t-1), position(r,C,t-1), move(r,M,t).
+
+% constranit(2,(6,2),(-1,0),3), 
 
 #program check(t).
 #external query(t).
