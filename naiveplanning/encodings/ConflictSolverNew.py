@@ -103,6 +103,7 @@ class SequentiellPlanner:
 
         ctl.solve(on_model=self.standard_parser)
 
+        self.edgeCollisionFound = False
         self.solveEdge()
 
         self.solveVertex()
@@ -161,28 +162,29 @@ class SequentiellPlanner:
     def solveEdge(self):
         
         while(self.edgeIterations > 0):
-            ctl = Control(arguments=["-Wnone"])
+            if(self.edgeCollisionFound == False):
+                ctl = Control(arguments=["-Wnone"])
 
-            ctl.load(self.conflict_detection_file)
-            ctl.load(self.instance_file)
+                ctl.load(self.conflict_detection_file)
+                ctl.load(self.instance_file)
 
-            for atom in self.standard_facts:
+                for atom in self.standard_facts:
                 
-                ctl.add("base",[],f"{atom}.")
+                    ctl.add("base",[],f"{atom}.")
 
-            ctl.ground([("base",[])])
+                ctl.ground([("base",[])])
 
-            ctl.solve(on_model=self.standard_parser)
+                ctl.solve(on_model=self.standard_parser)
 
-            self.edgeCollisionFound = False
-            for atom in self.standard_facts:
-                if(atom.name == "edgeCollision"):
-                    edgeCollisionFound = True
+                self.edgeCollisionFound = False
+                for atom in self.standard_facts:
+                    if(atom.name == "edgeCollision"):
+                        self.edgeCollisionFound = True
 
             self.edgeIterations = self.edgeIterations -1
 
             #if an edge collision was found
-            if edgeCollisionFound:
+            if self.edgeCollisionFound:
 
                 #solve edge collision
                 ctl = Control(arguments=["-Wnone"])
@@ -195,6 +197,7 @@ class SequentiellPlanner:
                 ctl.ground([("base",[])])
 
                 ctl.solve(on_model=self.standard_parser)
+                self.edgeCollisionFound = False
 
 
                 #repeat
@@ -208,6 +211,8 @@ class SequentiellPlanner:
         
         while(self.vertexIterations > 0):
 
+            newEdgeCollision = False
+            vertexCollisionFound = False
             if(self.edgeCollisionFound == True):
                 
                 ctl = Control(arguments=["-Wnone"])
@@ -229,6 +234,15 @@ class SequentiellPlanner:
             for atom in self.standard_facts:
                 if(atom.name == "vertextCollision"):
                     vertexCollisionFound = True
+                elif(atom.name == "edgeCollision"):
+                    if(self.edgeIterations >0):
+                        print("Edge",self.vertexIterations)
+                        newEdgeCollision = True
+                        vertexCollisionFound = False
+                        self.solveEdge()
+                        break
+            if(newEdgeCollision):
+                continue
 
             self.vertexIterations = self.vertexIterations -1
 
