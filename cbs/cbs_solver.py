@@ -1,5 +1,5 @@
 from __future__ import annotations
-from queue import PriorityQueue
+from bisect import insort
 from typing import Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model
 from clingo.solving import SolveResult
@@ -36,7 +36,7 @@ if args.debug:
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
-SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_iterative.lp')
+SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
 INSTANCE_FILE : str = args.instance
 
@@ -225,7 +225,7 @@ def main() -> None:
     plan : List[Symbol] = []
     agents : Dict[int,List[int,List[Symbol]]] = {}
     preprocessing_atoms : List[Symbol] = []
-    open_queue : PriorityQueue = PriorityQueue()
+    open : List[CTNode]
     solution_nodes : List[CTNode] = []
     preprocessing_atoms : List[Symbol] = []
     max_horizon : int
@@ -257,13 +257,13 @@ def main() -> None:
             logger.info("No initial solution found!")
             exit()
                 
-        open_queue.put(root)
+        open.append(root)
 
         logger.debug("While loop started")
 
-        while not  open_queue.empty():
+        while open:
 
-            current = open_queue.get()
+            current = open.pop(0)
 
             nodecount += 1
 
@@ -271,8 +271,12 @@ def main() -> None:
 
             if first_conflict:
                 node1, node2 = current.branch(first_conflict,max_horizon)
-                if node1.cost < inf : open_queue.put(node1)
-                if node2.cost < inf : open_queue.put(node2)
+                if args.greedy:
+                    if node1.cost < inf : open.insert(0,node1)
+                    if node2.cost < inf : open.insert(0,node2)
+                else:
+                    if node1.cost < inf : insort(open,node1)
+                    if node2.cost < inf : insort(open,node2)
                     
             else:
                 solution_nodes.append(current)
