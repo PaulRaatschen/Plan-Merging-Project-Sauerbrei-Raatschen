@@ -26,10 +26,10 @@ parser.add_argument("-v", "--verbose", default=False, action="store_true")
 parser.add_argument("--backtrack",default=False, action="store_true")
 parser.add_argument("--maxdepth",default=10,type=int)
 parser.add_argument("--debug", default=False, action="store_true")
-#args : Namespace = parser.parse_args()
+args : Namespace = parser.parse_args()
 
-#if args.debug:
-#    logger.setLevel(logging.DEBUG)
+if args.debug:
+    logger.setLevel(logging.DEBUG)
 
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
@@ -38,7 +38,7 @@ PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
 SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
 CONFLICT_DETECTION_FILE : str = path.join(ENCODING_DIR,'conflict_detection.lp')
 SAPF_NC_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_nc_inc.lp')
-INSTANCE_FILE : str = path.join(WORKING_DIR,'Cross_2rB.lp') #args.instance
+INSTANCE_FILE : str = args.instance
 
 class Solution:
 
@@ -216,16 +216,12 @@ def main() -> None:
     finished_index : int = 0 
     t_start : float = perf_counter()
     t_end : float
-    max_depth : int =  10 #args.maxdepth
+    max_depth : int = args.maxdepth
     satisfied : bool
 
-    # variables for debugging
-    optimize = True
-    backtrack = True
-    benchmark = True
 
     
-    if optimize:
+    if args.optimize:
         schedule : List[int] = optimize_schedule(solution)
 
         if schedule:
@@ -243,7 +239,7 @@ def main() -> None:
                 satisfied = False
                 logger.debug(f'No solution found for agent {agent}')
 
-                if backtrack and index > 0:
+                if args.backtrack and index > 0:
                     finished_index = index - 1
                     agent_to_swap : int = ordering[index-1]
                     ordering[index-1] = ordering[index]
@@ -257,7 +253,7 @@ def main() -> None:
                     max_depth -= 1
                     break
 
-        if not backtrack or satisfied:
+        if not args.backtrack or satisfied:
             break
 
     logger.info("Planning finished")
@@ -267,7 +263,7 @@ def main() -> None:
     else:
         logger.info("No global solution found")
 
-    if benchmark:
+    if args.benchmark:
         t_end = perf_counter()
         logger.info(f'Execution time : {t_end-t_start:.2f}s')
         logger.info(f'Total model cost : {solution.cost}')
