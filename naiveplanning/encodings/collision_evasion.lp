@@ -36,7 +36,7 @@ lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rP
 waitTime(W) :-lwaitTime(W), W = #max{D: lwaitTime(D)}.
 
 % Keep the path of the non evading robots unaltered
-rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y),T), chosenStep(_,_,R',_), not R = R'.
+rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y),T), chosenStep(_,_,R',_), R != R'.
 
 % Keep the path of the evading robot unaltered until evasion step
 rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y),T), chosenStep(_,T',R,_), T < T'.
