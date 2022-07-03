@@ -1,5 +1,4 @@
 from __future__ import annotations
-from pickletools import optimize
 from typing import Callable, Dict, List, Set, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model
 from time import perf_counter
