@@ -225,7 +225,7 @@ def main() -> None:
     plan : List[Symbol] = []
     agents : Dict[int,List[int,List[Symbol]]] = {}
     preprocessing_atoms : List[Symbol] = []
-    open : List[CTNode]
+    open_queue : List[CTNode] = []
     solution_nodes : List[CTNode] = []
     preprocessing_atoms : List[Symbol] = []
     max_horizon : int
@@ -257,13 +257,13 @@ def main() -> None:
             logger.info("No initial solution found!")
             exit()
                 
-        open.append(root)
+        open_queue.append(root)
 
         logger.debug("While loop started")
 
-        while open:
+        while open_queue:
 
-            current = open.pop(0)
+            current = open_queue.pop(0)
 
             nodecount += 1
 
@@ -272,11 +272,11 @@ def main() -> None:
             if first_conflict:
                 node1, node2 = current.branch(first_conflict,max_horizon)
                 if args.greedy:
-                    if node1.cost < inf : open.insert(0,node1)
-                    if node2.cost < inf : open.insert(0,node2)
+                    if node1.cost < inf : open_queue.insert(0,node1)
+                    if node2.cost < inf : open_queue.insert(0,node2)
                 else:
-                    if node1.cost < inf : insort(open,node1)
-                    if node2.cost < inf : insort(open,node2)
+                    if node1.cost < inf : insort(open_queue,node1)
+                    if node2.cost < inf : insort(open_queue,node2)
                     
             else:
                 solution_nodes.append(current)
