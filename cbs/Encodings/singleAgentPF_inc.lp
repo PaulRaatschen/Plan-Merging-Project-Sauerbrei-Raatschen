@@ -16,10 +16,10 @@ position(r,(X+DX,Y+DY),t) :- move(r,(DX,DY),t), position(r,(X,Y),t-1).
 position(r,C,t) :- position(r,C,t-1), not move(r,_,t).
 
 % Vertex Conflict
-:- position(r,(X,Y),t), position(R',(X,Y),t), r!=R'.
+:- position(r,(X,Y),t), position(R,(X,Y),t), r!=R.
 
 % Edge Conflict
-:- position(r,(X,Y),t-1), move(r,(DX,DY),t), position(R',(X+DX,Y+DY),t-1), position(r,(X,Y),t), r!=R'.
+:- position(r,(X,Y),t-1), move(r,(DX,DY),t), position(R,(X+DX,Y+DY),t-1), position(R,(X,Y),t), r!=R.
 
 % Avoid stationary robots
 :- position(r,(X,Y),t), goal(R,(X,Y)), goalReached(R,T), r!=R, t >= T.
