@@ -301,6 +301,7 @@ def main() -> None:
                     output.write(f"{instance}. ")
 
         logger.info("Solution found")
+        logger.info(f'Total model cost : {best_solution.cost}')
 
         if args.benchmark:
             logger.info(f'Execution Time: {end_time-start_time}s')
