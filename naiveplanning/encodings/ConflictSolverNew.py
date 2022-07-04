@@ -32,7 +32,7 @@ class SequentiellPlanner:
 
         self.individualRobotPaths = []
 
-        self.setup = "./encodings/setup.lp"
+        self.setup = "./encodings/Setup.lp"
         self.singleAgentPF = "./encodings/singleAgentPF.lp"
         self.collisionToRPosition = "./encodings/collisionToRPosition.lp"
         self.postprocessing_file = "./encodings/rPositionToCollision.lp"
@@ -58,15 +58,6 @@ class SequentiellPlanner:
             time_end = time()
 
             print(f"Execution Time: {round(time_end-time_start,3)} seconds")
-            total_moves = 0
-            for robot in self.robots:
-                if self.plans[robot][1]:
-                    moves = self.plans[robot][1][0]
-                    print(f"Robot: {robot}, Moves: {moves}")
-                    total_moves += moves
-                else:
-                    print(f"No solution for Robot {robot}")
-            print(f"Total moves: {total_moves}")
         else:
             self.solve()
 
@@ -83,7 +74,7 @@ class SequentiellPlanner:
         ctl.solve(on_model=self.standard_parser)
 
         for robot in self.robots:
-            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=10","-Wnone"])
+            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=30","-Wnone"])
             ctl.load(self.instance_file)
             ctl.load(self.singleAgentPF)
             
@@ -103,13 +94,15 @@ class SequentiellPlanner:
 
         ctl.solve(on_model=self.standard_parser)
 
+
+
         self.solveEdge()
 
         self.solveVertex()
-
-        for atom in self.standard_facts:
-            print(atom)
-        print("\n")
+        if(self.verbose):
+            for atom in self.standard_facts:
+                print(atom)
+            print("\n")
 
         ctl = Control(arguments=["-Wnone"])
 
@@ -177,12 +170,13 @@ class SequentiellPlanner:
             self.edgeCollisionFound = False
             for atom in self.standard_facts:
                 if(atom.name == "edgeCollision"):
-                    edgeCollisionFound = True
+                    self.edgeCollisionFound = True
 
             self.edgeIterations = self.edgeIterations -1
 
             #if an edge collision was found
-            if edgeCollisionFound:
+            if self.edgeCollisionFound:
+            
 
                 #solve edge collision
                 ctl = Control(arguments=["-Wnone"])
