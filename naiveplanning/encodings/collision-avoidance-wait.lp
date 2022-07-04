@@ -5,7 +5,7 @@
 
 % Takes output of find_conflict.lp as input
 
-
+edgeCollision(1,1,1,1,1,1).
 
 earliestVertexCollision(TMIN) :- TMIN = #min{T : vertextCollision(_,T,_,_)}.
 
@@ -17,6 +17,8 @@ longestTime(T) :-  T = #max{D: rPositionX(R,(X,Y),D),firstvertextCollision(_,_,R
 
 choice(R',prio(2)):- firstvertextCollision((X0,Y0),T0,R,R'), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0+1),R!=R'.
 choice(R',prio(2)):- firstvertextCollision((X0,Y0),T0,R',R), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0+1),R!=R'.
+
+
 
 choice(R',prio(1)):- firstvertextCollision((X0,Y0),T0,R,R'), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0),R!=R'.
 choice(R',prio(1)):- firstvertextCollision((X0,Y0),T0,R',R), rPositionX(R,P1,T0-1), rPositionX(R',P1,T0),R!=R'.
@@ -47,6 +49,6 @@ rPosition(R,(X,Y),T) :- rPositionX(R,(X,Y), T), finalChoice(R'), R!=R'.
 #show firstvertextCollision/4.
 #show choice/2.
 #show finalChoice/1.
-#show edgeCollision/6.
+
 
 

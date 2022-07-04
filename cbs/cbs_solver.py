@@ -1,6 +1,5 @@
 from __future__ import annotations
-from ast import Num
-from queue import PriorityQueue
+from bisect import insort
 from typing import Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model
 from clingo.solving import SolveResult
@@ -15,7 +14,7 @@ from copy import deepcopy, copy
 
 """Logging setup"""
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(levelname)s:%(message)s')
 handler = logging.StreamHandler(stdout)
 handler.setFormatter(formatter)
@@ -25,16 +24,21 @@ logger.addHandler(handler)
 parser : ArgumentParser = ArgumentParser()
 parser.add_argument("instance", type=str)
 parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-parser.add_argument("-o", "--optimize", default=False, action="store_true")
-#args : Namespace = parser.parse_args()
+parser.add_argument("-g", "--greedy", default=False, action="store_true")
+parser.add_argument("--debug", default=False, action="store_true")
+
+args : Namespace = parser.parse_args()
+
+if args.debug:
+    logger.setLevel(logging.DEBUG)
 
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
-ENCODING_DIR : str = path.join(WORKING_DIR,'Encodings')
+ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
-SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_iterative.lp')
+SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
-INSTANCE_FILE : str = path.join(WORKING_DIR,'edge_cl_instance.lp')  #args.instance
+INSTANCE_FILE : str = args.instance
 
 
 class CTNode:
@@ -66,7 +70,7 @@ class CTNode:
 
     def __le__(self, other : CTNode) -> bool:
         return not self.__gt__(other)
-            
+
     def low_level(self,agent : int, horizon : int) -> bool:
 
         old_cost : int = 0
@@ -221,49 +225,69 @@ def main() -> None:
     plan : List[Symbol] = []
     agents : Dict[int,List[int,List[Symbol]]] = {}
     preprocessing_atoms : List[Symbol] = []
-    open_queue : PriorityQueue = PriorityQueue()
+    open_queue : List[CTNode] = []
     solution_nodes : List[CTNode] = []
     preprocessing_atoms : List[Symbol] = []
     max_horizon : int
     root : CTNode
     current : CTNode
+    nodecount : int = 1
+    searchspace : int 
 
-    logger.debug("Programm started")
+    try:
 
-    start_time : float = perf_counter()
-    
-    plan, preprocessing_atoms, agents, max_horizon = preprocessing()
+        logger.debug("Programm started")
 
-    root = CTNode(None,None,preprocessing_atoms)
+        start_time : float = perf_counter()
+        
+        plan, preprocessing_atoms, agents, max_horizon = preprocessing()
 
-    logger.debug("Initializing first node")
+        searchspace = 2 * max_horizon  * max_horizon ** len(agents)
 
-    for agent in agents:
-        root.low_level(agent,max_horizon)
+        max_horizon *=2 
 
-    if(root.cost == inf):
-        logger.info("No initial solution found!")
-        exit()
-            
-    open_queue.put(root)
+        root = CTNode(None,None,preprocessing_atoms)
 
-    logger.debug("While loop started")
+        logger.debug("Initializing first node")
 
-    while not  open_queue.empty():
+        for agent in agents:
+            root.low_level(agent,max_horizon)
 
-        current = open_queue.get()
-
-        first_conflict = current.validate_plans()
-
-        if first_conflict:
-            node1, node2 = current.branch(first_conflict,max_horizon)
-            open_queue.put(node1)
-            open_queue.put(node2)
+        if(root.cost == inf):
+            logger.info("No initial solution found!")
+            exit()
                 
-        else:
-            solution_nodes.append(current)
+        open_queue.append(root)
+
+        logger.debug("While loop started")
+
+        while open_queue:
+
+            current = open_queue.pop(0)
+
+            nodecount += 1
+
+            first_conflict = current.validate_plans()
+
+            if first_conflict:
+                node1, node2 = current.branch(first_conflict,max_horizon)
+                if args.greedy:
+                    if node1.cost < inf : open_queue.insert(0,node1)
+                    if node2.cost < inf : open_queue.insert(0,node2)
+                else:
+                    if node1.cost < inf : insort(open_queue,node1)
+                    if node2.cost < inf : insort(open_queue,node2)
+                    
+            else:
+                solution_nodes.append(current)
+                break
+
+    except KeyboardInterrupt:
+        logger.info("Search terminated by keyboard interrupt")
 
     end_time = perf_counter()
+
+    logger.info(f'{nodecount/searchspace}% of search space exhausted')
 
     if solution_nodes:
         best_solution = solution_nodes[0]
@@ -277,6 +301,7 @@ def main() -> None:
                     output.write(f"{instance}. ")
 
         logger.info("Solution found")
+        logger.info(f'Total model cost : {best_solution.cost}')
 
         if args.benchmark:
             logger.info(f'Execution Time: {end_time-start_time}s')
@@ -286,4 +311,5 @@ def main() -> None:
     
 
 if __name__ == '__main__':
-    main()
+        main()
+
