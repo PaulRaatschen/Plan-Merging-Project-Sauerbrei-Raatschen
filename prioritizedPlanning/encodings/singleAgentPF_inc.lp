@@ -17,7 +17,8 @@ position(r,C,t) :- position(r,C,t-1), not move(r,_,t).
 :- position(r,(X,Y),t-1), move(r,(DX,DY),t), position(R,(X+DX,Y+DY),t-1), position(R,(X,Y),t), r!=R.
 
 % Avoid stationary robots
-:- position(r,(X,Y),t), goal(R,(X,Y)), goalReached(R,T), r!=R, t >= T.
+:- position(r,(X,Y),t), goal(R,(X,Y)), position(R,(X,Y),T), r!=R, t >= T.
+:- position(r,(X,Y),t), goal(r,(X,Y)), position(R,(X,Y),T), r!=R, t <= T.
 
 
 #program check(t).

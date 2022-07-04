@@ -287,7 +287,7 @@ def main() -> None:
 
     end_time = perf_counter()
 
-    logger.info(f'{nodecount/searchspace : .2f}% of search space exhausted')
+    logger.info(f'{nodecount/searchspace}% of search space exhausted')
 
     if solution_nodes:
         best_solution = solution_nodes[0]
