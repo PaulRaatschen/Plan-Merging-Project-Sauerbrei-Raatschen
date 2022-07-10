@@ -2,9 +2,10 @@
 from clingo import Control, Number, Function
 from time import time
 from numpy import round
+from os import path
 import argparse
 
-class SequentiellPlanner:
+class SequentialPlanner:
 
     def __init__(self):
 
@@ -32,15 +33,20 @@ class SequentiellPlanner:
 
         self.individualRobotPaths = []
 
-        self.setup = "./encodings/Setup.lp"
-        self.singleAgentPF = "./encodings/singleAgentPF.lp"
-        self.collisionToRPosition = "./encodings/collisionToRPosition.lp"
-        self.postprocessing_file = "./encodings/rPositionToCollision.lp"
+        """Directorys and asp files"""
+        WORKING_DIR : str = path.abspath(path.dirname(__file__))
+        ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 
-        self.edgeSolver_file = "./encodings/collision_evasion.lp"
-        self.vertexSolver_file = "./encodings/collision-avoidance-wait.lp"
 
-        self.conflict_detection_file = "./encodings/conflict_detection.lp"
+        self.setup = path.join(ENCODING_DIR,'setup.lp')
+        self.singleAgentPF = path.join(ENCODING_DIR,'singleAgentPF.lp')
+        self.collisionToRPosition = path.join(ENCODING_DIR,'collisionToRPosition.lp') 
+        self.postprocessing_file = path.join(ENCODING_DIR,'rPositionToCollision.lp')
+
+        self.edgeSolver_file = path.join(ENCODING_DIR,'collision_evasion.lp')
+        self.vertexSolver_file = path.join(ENCODING_DIR,'collision-avoidance-wait.lp')
+
+        self.conflict_detection_file = path.join(ENCODING_DIR,'conflict_detection.lp')
 
         self.instance_file = args.instance
 
@@ -252,4 +258,4 @@ class SequentiellPlanner:
             else:
                 break
 if __name__ == "__main__":
-    SequentiellPlanner()
+    SequentialPlanner()
