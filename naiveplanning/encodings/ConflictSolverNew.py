@@ -32,7 +32,7 @@ class SequentiellPlanner:
 
         self.individualRobotPaths = []
 
-        self.setup = "./encodings/setup.lp"
+        self.setup = "./encodings/Setup.lp"
         self.singleAgentPF = "./encodings/singleAgentPF.lp"
         self.collisionToRPosition = "./encodings/collisionToRPosition.lp"
         self.postprocessing_file = "./encodings/rPositionToCollision.lp"
@@ -58,15 +58,6 @@ class SequentiellPlanner:
             time_end = time()
 
             print(f"Execution Time: {round(time_end-time_start,3)} seconds")
-            total_moves = 0
-            for robot in self.robots:
-                if self.plans[robot][1]:
-                    moves = self.plans[robot][1][0]
-                    print(f"Robot: {robot}, Moves: {moves}")
-                    total_moves += moves
-                else:
-                    print(f"No solution for Robot {robot}")
-            print(f"Total moves: {total_moves}")
         else:
             self.solve()
 
@@ -83,7 +74,7 @@ class SequentiellPlanner:
         ctl.solve(on_model=self.standard_parser)
 
         for robot in self.robots:
-            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=10","-Wnone"])
+            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=30","-Wnone"])
             ctl.load(self.instance_file)
             ctl.load(self.singleAgentPF)
             
@@ -103,14 +94,15 @@ class SequentiellPlanner:
 
         ctl.solve(on_model=self.standard_parser)
 
-        self.edgeCollisionFound = False
+
+
         self.solveEdge()
 
         self.solveVertex()
-
-        for atom in self.standard_facts:
-            print(atom)
-        print("\n")
+        if(self.verbose):
+            for atom in self.standard_facts:
+                print(atom)
+            print("\n")
 
         ctl = Control(arguments=["-Wnone"])
 
@@ -162,29 +154,29 @@ class SequentiellPlanner:
     def solveEdge(self):
         
         while(self.edgeIterations > 0):
-            if(self.edgeCollisionFound == False):
-                ctl = Control(arguments=["-Wnone"])
+            ctl = Control(arguments=["-Wnone"])
 
-                ctl.load(self.conflict_detection_file)
-                ctl.load(self.instance_file)
+            ctl.load(self.conflict_detection_file)
+            ctl.load(self.instance_file)
 
-                for atom in self.standard_facts:
+            for atom in self.standard_facts:
                 
-                    ctl.add("base",[],f"{atom}.")
+                ctl.add("base",[],f"{atom}.")
 
-                ctl.ground([("base",[])])
+            ctl.ground([("base",[])])
 
-                ctl.solve(on_model=self.standard_parser)
+            ctl.solve(on_model=self.standard_parser)
 
-                self.edgeCollisionFound = False
-                for atom in self.standard_facts:
-                    if(atom.name == "edgeCollision"):
-                        self.edgeCollisionFound = True
+            self.edgeCollisionFound = False
+            for atom in self.standard_facts:
+                if(atom.name == "edgeCollision"):
+                    self.edgeCollisionFound = True
 
             self.edgeIterations = self.edgeIterations -1
 
             #if an edge collision was found
             if self.edgeCollisionFound:
+            
 
                 #solve edge collision
                 ctl = Control(arguments=["-Wnone"])
@@ -197,7 +189,6 @@ class SequentiellPlanner:
                 ctl.ground([("base",[])])
 
                 ctl.solve(on_model=self.standard_parser)
-                self.edgeCollisionFound = False
 
 
                 #repeat
@@ -211,8 +202,6 @@ class SequentiellPlanner:
         
         while(self.vertexIterations > 0):
 
-            newEdgeCollision = False
-            vertexCollisionFound = False
             if(self.edgeCollisionFound == True):
                 
                 ctl = Control(arguments=["-Wnone"])
@@ -234,15 +223,6 @@ class SequentiellPlanner:
             for atom in self.standard_facts:
                 if(atom.name == "vertextCollision"):
                     vertexCollisionFound = True
-                elif(atom.name == "edgeCollision"):
-                    if(self.edgeIterations >0):
-                        print("Edge",self.vertexIterations)
-                        newEdgeCollision = True
-                        vertexCollisionFound = False
-                        self.solveEdge()
-                        break
-            if(newEdgeCollision):
-                continue
 
             self.vertexIterations = self.vertexIterations -1
 
