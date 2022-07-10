@@ -31,6 +31,7 @@ minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}.
 lwaitTime(W) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
 lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rPositionX(R,(X',Y'),T0+1), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
 lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rPositionX(R,(X',Y'),T0), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
+lwaitTime(0).
 
 % Longest of these times
 waitTime(W) :-lwaitTime(W), W = #max{D: lwaitTime(D)}.
