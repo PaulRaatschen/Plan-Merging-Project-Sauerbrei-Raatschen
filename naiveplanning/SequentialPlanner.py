@@ -2,9 +2,10 @@
 from clingo import Control, Number, Function
 from time import time
 from numpy import round
+from os import path
 import argparse
 
-class SequentiellPlanner:
+class SequentialPlanner:
 
     def __init__(self):
 
@@ -32,21 +33,28 @@ class SequentiellPlanner:
 
         self.individualRobotPaths = []
 
-        self.setup = "./encodings/setup.lp"
-        self.singleAgentPF = "./encodings/singleAgentPF.lp"
-        self.collisionToRPosition = "./encodings/collisionToRPosition.lp"
-        self.postprocessing_file = "./encodings/rPositionToCollision.lp"
+        """Directorys and asp files"""
+        WORKING_DIR : str = path.abspath(path.dirname(__file__))
+        ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 
-        self.edgeSolver_file = "./encodings/collision_evasion.lp"
-        self.vertexSolver_file = "./encodings/collision-avoidance-wait.lp"
 
-        self.conflict_detection_file = "./encodings/conflict_detection.lp"
+        self.setup = path.join(ENCODING_DIR,'setup.lp')
+        self.singleAgentPF = path.join(ENCODING_DIR,'singleAgentPF.lp')
+        self.collisionToRPosition = path.join(ENCODING_DIR,'collisionToRPosition.lp') 
+        self.postprocessing_file = path.join(ENCODING_DIR,'rPositionToCollision.lp')
+
+        self.edgeSolver_file = path.join(ENCODING_DIR,'collision_evasion.lp')
+        self.vertexSolver_file = path.join(ENCODING_DIR,'collision-avoidance-wait.lp')
+
+        self.conflict_detection_file = path.join(ENCODING_DIR,'conflict_detection.lp')
 
         self.instance_file = args.instance
 
         self.edgeIterations = args.edgeIterations
         self.maxEdgeIterations = args.edgeIterations
         self.vertexIterations = args.vertexIterations
+        self.ConflictStep = False
+        self.edgeCollisionFound = False
 
         self.benchmark = args.benchmark
 
@@ -58,15 +66,6 @@ class SequentiellPlanner:
             time_end = time()
 
             print(f"Execution Time: {round(time_end-time_start,3)} seconds")
-            total_moves = 0
-            for robot in self.robots:
-                if self.plans[robot][1]:
-                    moves = self.plans[robot][1][0]
-                    print(f"Robot: {robot}, Moves: {moves}")
-                    total_moves += moves
-                else:
-                    print(f"No solution for Robot {robot}")
-            print(f"Total moves: {total_moves}")
         else:
             self.solve()
 
@@ -83,7 +82,7 @@ class SequentiellPlanner:
         ctl.solve(on_model=self.standard_parser)
 
         for robot in self.robots:
-            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=10","-Wnone"])
+            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=30","-Wnone"])
             ctl.load(self.instance_file)
             ctl.load(self.singleAgentPF)
             
@@ -103,13 +102,15 @@ class SequentiellPlanner:
 
         ctl.solve(on_model=self.standard_parser)
 
+
+
         self.solveEdge()
 
         self.solveVertex()
-
-        for atom in self.standard_facts:
-            print(atom)
-        print("\n")
+        if(self.verbose):
+            for atom in self.standard_facts:
+                print(atom)
+            print("\n")
 
         ctl = Control(arguments=["-Wnone"])
 
@@ -161,28 +162,31 @@ class SequentiellPlanner:
     def solveEdge(self):
         
         while(self.edgeIterations > 0):
-            ctl = Control(arguments=["-Wnone"])
+            if(self.ConflictStep == False):
+                self.ConflictStep = True
+                ctl = Control(arguments=["-Wnone"])
 
-            ctl.load(self.conflict_detection_file)
-            ctl.load(self.instance_file)
+                ctl.load(self.conflict_detection_file)
+                ctl.load(self.instance_file)
 
-            for atom in self.standard_facts:
-                
-                ctl.add("base",[],f"{atom}.")
+                for atom in self.standard_facts:
+                    
+                    ctl.add("base",[],f"{atom}.")
 
-            ctl.ground([("base",[])])
+                ctl.ground([("base",[])])
 
-            ctl.solve(on_model=self.standard_parser)
+                ctl.solve(on_model=self.standard_parser)
 
-            self.edgeCollisionFound = False
-            for atom in self.standard_facts:
-                if(atom.name == "edgeCollision"):
-                    edgeCollisionFound = True
+                self.edgeCollisionFound = False
+                for atom in self.standard_facts:
+                    if(atom.name == "edgeCollision"):
+                        self.edgeCollisionFound = True
 
             self.edgeIterations = self.edgeIterations -1
 
             #if an edge collision was found
-            if edgeCollisionFound:
+            if self.edgeCollisionFound:
+                self.ConflictStep = False
 
                 #solve edge collision
                 ctl = Control(arguments=["-Wnone"])
@@ -208,7 +212,8 @@ class SequentiellPlanner:
         
         while(self.vertexIterations > 0):
 
-            if(self.edgeCollisionFound == True):
+            if(self.ConflictStep == False):
+                self.ConflictStep = True
                 
                 ctl = Control(arguments=["-Wnone"])
 
@@ -222,19 +227,21 @@ class SequentiellPlanner:
                 ctl.ground([("base",[])])
 
                 ctl.solve(on_model=self.standard_parser)
-            else:
-                self.edgeCollisionFound =True
 
             vertexCollisionFound = False
             for atom in self.standard_facts:
                 if(atom.name == "vertextCollision"):
                     vertexCollisionFound = True
+                if(atom.name == "edgeCollision" and self.edgeIterations > 0):
+                    if(self.verbose):
+                        print("Edgecollision found in Vertexcollision\n")
+                    self.solveEdge()
 
             self.vertexIterations = self.vertexIterations -1
 
             #if an vertex collision was found
             if vertexCollisionFound:
-
+                self.ConflictStep=False
                 #solve vertex collision
                 ctl = Control(arguments=["-Wnone"])
 
@@ -251,4 +258,4 @@ class SequentiellPlanner:
             else:
                 break
 if __name__ == "__main__":
-    SequentiellPlanner()
+    SequentialPlanner()

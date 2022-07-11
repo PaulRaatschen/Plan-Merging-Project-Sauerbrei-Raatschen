@@ -22,7 +22,7 @@ from collections import Counter #used to modify Strings, here to remove duplicat
 
 edgeIterations = 500 #number of run edge iterations
 
-vertexIterations = 500 #number of run vertext iterations
+vertexIterations = 70 #number of run vertext iterations
 
 numberOfRobots = 30 #max number of how many robots the instance has, can be higher then the total amount
 
