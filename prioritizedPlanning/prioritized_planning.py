@@ -68,7 +68,7 @@ def preprocessing() -> Solution:
             elif(atom.name == 'numOfRobots'):
                 solution.agents = list(range(1,atom.arguments[0].number+1))
             elif(atom.name == 'numOfNodes'):
-                solution.max_horizon = atom.arguments[0].number * 2
+                solution.max_horizon = atom.arguments[0].number
             else:
                 solution.instance_atoms.append(atom)
 
