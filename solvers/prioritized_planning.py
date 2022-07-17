@@ -17,16 +17,6 @@ handler = logging.StreamHandler(stdout)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-"""Command line argument parsing"""
-parser : ArgumentParser = ArgumentParser()
-parser.add_argument("instance", type=str)
-parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-parser.add_argument("-o", "--optimize", default=False, action="store_true")
-parser.add_argument("-v", "--verbose", default=False, action="store_true")
-parser.add_argument("--backtrack",default=False, action="store_true")
-parser.add_argument("--maxdepth",default=10,type=int)
-parser.add_argument("--debug", default=False, action="store_true")
-
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
@@ -253,6 +243,16 @@ class PrioritizedPlanningSolver():
         return self.solution
 
 if __name__ == "__main__":
+
+    """Command line argument parsing"""
+    parser : ArgumentParser = ArgumentParser()
+    parser.add_argument("instance", type=str)
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
+    parser.add_argument("-o", "--optimize", default=False, action="store_true")
+    parser.add_argument("-v", "--verbose", default=False, action="store_true")
+    parser.add_argument("--backtrack",default=False, action="store_true")
+    parser.add_argument("--maxdepth",default=10,type=int)
+    parser.add_argument("--debug", default=False, action="store_true")
     args : Namespace = parser.parse_args()
 
     solution = PrioritizedPlanningSolver(args.instance,args.optimize,args.backtrack,args.maxdepth,logging.DEBUG if args.debug else logging.INFO).solve()
