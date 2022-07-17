@@ -10,7 +10,7 @@ from sys import exit, stdout
 from math import inf
 import logging
 from copy import deepcopy, copy
-from solvers.solution import Solution
+from solution import Solution
 
 
 """Logging setup"""
