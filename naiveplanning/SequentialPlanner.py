@@ -6,19 +6,7 @@ import argparse
 
 class SequentialPlanner:
 
-    def __init__(self):
-
-        parser = argparse.ArgumentParser()
-
-        parser.add_argument("instance", type=str)
-        parser.add_argument("edgeIterations",default=10, type=int)
-        parser.add_argument("vertexIterations",default=20, type=int)
-
-        parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-
-        parser.add_argument("-v", "--verbose", default=False, action="store_true")
-
-        args = parser.parse_args()
+    def __init__(self,args):
         
         self.iteration = 0
 
@@ -256,5 +244,30 @@ class SequentialPlanner:
                 #repeat
             else:
                 break
+    def benchmark(instancePath):
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument("-instance", type=str,default = instancePath)
+        parser.add_argument("edgeIterations",default=10, type=int)
+        parser.add_argument("vertexIterations",default=20, type=int)
+
+        parser.add_argument("-b", "--benchmark", default=False, action="store_true")
+
+        parser.add_argument("-v", "--verbose", default=False, action="store_true")
+
+        args = parser.parse_args()
+        SequentialPlanner(args)
+
 if __name__ == "__main__":
-    SequentialPlanner()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("instance", type=str)
+    parser.add_argument("edgeIterations",default=10, type=int)
+    parser.add_argument("vertexIterations",default=20, type=int)
+
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
+
+    parser.add_argument("-v", "--verbose", default=False, action="store_true")
+
+    args = parser.parse_args()
+    SequentialPlanner(args)

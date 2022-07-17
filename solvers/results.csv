@@ -1,0 +1,6 @@
+test_instance.lp,0,PP,26,6,0.02279129999999996,True
+test_instance.lp,0,SP,26,6,0.05100417137145996,True
+test_instance.lp,0,CBS,26,6,0.027890599999999877,True
+edge_cl_instance.lp,0,PP,24,20,0.04777079999999989,True
+edge_cl_instance.lp,0,SP,24,20,0.06400179862976074,True
+edge_cl_instance.lp,0,CBS,24,20,1.7561449,True

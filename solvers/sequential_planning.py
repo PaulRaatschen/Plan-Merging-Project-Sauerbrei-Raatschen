@@ -1,25 +1,12 @@
-
 from clingo import Control, Number, Function
 from time import time
-from numpy import round
 from os import path
 import argparse
+import solution
 
 class SequentialPlanner:
 
-    def __init__(self):
-
-        parser = argparse.ArgumentParser()
-
-        parser.add_argument("instance", type=str)
-        parser.add_argument("edgeIterations",default=10, type=int)
-        parser.add_argument("vertexIterations",default=20, type=int)
-
-        parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-
-        parser.add_argument("-v", "--verbose", default=False, action="store_true")
-
-        args = parser.parse_args()
+    def __init__(self,args):
         
         self.iteration = 0
 
@@ -55,19 +42,29 @@ class SequentialPlanner:
         self.vertexIterations = args.vertexIterations
         self.ConflictStep = False
         self.edgeCollisionFound = False
+        self.result = solution.Solution()
 
         self.benchmark = args.benchmark
 
         self.verbose = args.verbose
+        time_start = time()
+        self.solve()
+        time_end = time()
+
+        self.result.execution_time = time_end-time_start
+        if(self.edgeIterations == 0 or self.vertexIterations == 0):
+            self.result.satisfied = False
+        else:
+            self.result.satisfied = True
+
+
+
 
         if self.benchmark:
-            time_start = time()
-            self.solve()
-            time_end = time()
 
-            print(f"Execution Time: {round(time_end-time_start,3)} seconds")
-        else:
-            self.solve()
+
+            print(f"Execution Time: {time_end-time_start:.3f} seconds")
+
 
     def solve(self):
 
@@ -82,7 +79,7 @@ class SequentialPlanner:
         ctl.solve(on_model=self.standard_parser)
 
         for robot in self.robots:
-            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=30","-Wnone"])
+            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon="+str(self.result.max_horizon),"-Wnone"])
             ctl.load(self.instance_file)
             ctl.load(self.singleAgentPF)
             
@@ -123,11 +120,22 @@ class SequentialPlanner:
 
         ctl.solve(on_model=self.standard_parser)
 
+        self.result.max_horizon = 0
+        for atom in self.standard_facts:
+                if atom.name == "occurs":
+                    self.result.cost += 1
+                    if( atom.arguments[2].number > self.result.max_horizon):
+                        self.result.max_horizon = atom.arguments[2].number
+
         with open("plan.lp",'w') as output:
             for atom in self.model:
+
+
                 output.write(f"{str(atom)}. ")
+
             for atom in self.standard_facts:
                 output.write(f"{str(atom)}. ")
+        return self.result
     
     def standard_parser(self,model):
 
@@ -138,6 +146,8 @@ class SequentialPlanner:
         for atom in model.symbols(shown=True):
             if(atom.name == "init"):
                 self.model.append(atom)
+            elif(atom.name == 'numOfNodes'):
+                self.result.max_horizon = atom.arguments[0].number * 2
 
             elif(atom.name == "numOfRobots"):
                                 
@@ -205,7 +215,8 @@ class SequentialPlanner:
             
             #if no edge collision was found, end edge iteration
             else:
-                print("Edge, stopped after iteration " + str(self.maxEdgeIterations - self.edgeIterations))
+                if(self.verbose):
+                    print("Edge, stopped after iteration " + str(self.maxEdgeIterations - self.edgeIterations))
 
                 return
     def solveVertex(self):
@@ -257,5 +268,27 @@ class SequentialPlanner:
                 #repeat
             else:
                 break
+def benchmark(instancePath):
+    args = argparse.Namespace()
+    args.instance = instancePath
+    args.edgeIterations = 80
+    args.vertexIterations = 120
+    args.benchmark = False
+    args.verbose = False
+
+    return SequentialPlanner(args)
+
+
 if __name__ == "__main__":
-    SequentialPlanner()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("instance", type=str)
+    parser.add_argument("edgeIterations",default=10, type=int)
+    parser.add_argument("vertexIterations",default=20, type=int)
+
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
+
+    parser.add_argument("-v", "--verbose", default=False, action="store_true")
+
+    args = parser.parse_args()
+    SequentialPlanner(args)

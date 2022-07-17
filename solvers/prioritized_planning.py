@@ -17,6 +17,11 @@ handler = logging.StreamHandler(stdout)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
@@ -242,6 +247,15 @@ class PrioritizedPlanningSolver():
         
         return self.solution
 
+def benchmark(instancePath : str) -> Solution:
+
+
+
+
+
+    solution = PrioritizedPlanningSolver(instancePath,False,False,10,logging.INFO).solve()
+    return solution
+
 if __name__ == "__main__":
 
     """Command line argument parsing"""
@@ -253,6 +267,10 @@ if __name__ == "__main__":
     parser.add_argument("--backtrack",default=False, action="store_true")
     parser.add_argument("--maxdepth",default=10,type=int)
     parser.add_argument("--debug", default=False, action="store_true")
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     args : Namespace = parser.parse_args()
 
     solution = PrioritizedPlanningSolver(args.instance,args.optimize,args.backtrack,args.maxdepth,logging.DEBUG if args.debug else logging.INFO).solve()
