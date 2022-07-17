@@ -1,5 +1,5 @@
-import string
-from typing import List, Symbol, Dict, Union
+from typing import List, Dict, Union
+from clingo import Symbol
 from math import inf
 
 class Solution:
@@ -12,8 +12,7 @@ class Solution:
         self.max_horizon = max_horizon
         self.cost : int = 0
         self.execution_time : float = 0.0
-
-
+        self.satisfied : bool = False
 
     def clear_plans(self) -> None:
         self.plans = {}
@@ -22,8 +21,10 @@ class Solution:
         if agent in self.plans:
             self.plans[agent] = {'occurs' : [],'positions' : [], 'cost' : inf}
 
-    def save(self, filepath : string):
-
+    def save(self, filepath : str):
         with open(filepath, 'w', encoding='utf-8') as file:
             for init in self.inits:
-                file.write()
+                file.write(f"{init}. ")
+            for plan in self.plans.values():
+                for occur in plan['occurs']:
+                    file.write(f"{occur}. ")
