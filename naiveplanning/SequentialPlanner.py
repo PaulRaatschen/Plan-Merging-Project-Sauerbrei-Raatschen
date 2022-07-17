@@ -1,7 +1,6 @@
 
 from clingo import Control, Number, Function
 from time import time
-from numpy import round
 from os import path
 import argparse
 
@@ -65,7 +64,7 @@ class SequentialPlanner:
             self.solve()
             time_end = time()
 
-            print(f"Execution Time: {round(time_end-time_start,3)} seconds")
+            print(f"Execution Time: {time_end-time_start:.3f} seconds")
         else:
             self.solve()
 
