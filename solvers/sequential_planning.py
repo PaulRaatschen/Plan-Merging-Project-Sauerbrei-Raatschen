@@ -59,7 +59,6 @@ class SequentialPlanner:
 
 
 
-
         if self.benchmark:
 
 
