@@ -21,11 +21,8 @@ handler = logging.StreamHandler(stdout)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-<<<<<<< Updated upstream
-=======
 
 
->>>>>>> Stashed changes
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
@@ -303,10 +300,6 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--benchmark", default=False, action="store_true")
     parser.add_argument("-g", "--greedy", default=False, action="store_true")
     parser.add_argument("--debug", default=False, action="store_true")
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
     args : Namespace = parser.parse_args()
 
     solution =  CBS_Solver(args.instance,args.greedy,logging.DEBUG if args.debug else logging.INFO).solve()

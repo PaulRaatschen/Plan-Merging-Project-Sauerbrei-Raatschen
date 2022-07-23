@@ -4,3 +4,9 @@ test_instance.lp,0,CBS,26,6,0.027890599999999877,True
 edge_cl_instance.lp,0,PP,24,20,0.04777079999999989,True
 edge_cl_instance.lp,0,SP,24,20,0.06400179862976074,True
 edge_cl_instance.lp,0,CBS,24,20,1.7561449,True
+generatedInstance.lp,0,PP,146,121,0.4911689,True
+generatedInstance.lp,0,SP,23,97,2.9849443435668945,True
+generatedInstance.lp,0,CBS,146,0,47.7190665,False
+generatedInstance.lp,0,PP,24,4,0.012447600000000003,True
+generatedInstance.lp,0,SP,3,6,0.044438838958740234,True
+generatedInstance.lp,0,CBS,24,4,0.016670799999999986,True
