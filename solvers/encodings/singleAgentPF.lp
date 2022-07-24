@@ -62,6 +62,8 @@ position(  shelf(S),(X,Y),0) :- init(object(shelf,S),          value(at,(X,Y))),
 
 highway(            C    )   :- init(object(highway,_),        value(at,C)).
 
+%#minimize{move}.
+
 %output.lp
 #show.
 #show init/2.

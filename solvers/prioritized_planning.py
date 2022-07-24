@@ -244,14 +244,6 @@ class PrioritizedPlanningSolver():
         
         return self.solution
 
-def benchmark(instancePath : str) -> Solution:
-
-
-
-
-
-    solution = PrioritizedPlanningSolver(instancePath,False,False,10,logging.INFO).solve()
-    return solution
 
 if __name__ == "__main__":
 

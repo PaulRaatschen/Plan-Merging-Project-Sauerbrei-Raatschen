@@ -33,48 +33,55 @@ parser : ArgumentParser = ArgumentParser()
 parser.add_argument("instance", type=str)
 parser.add_argument("-tag", type=int,default = 0)
 parser.add_argument("-gi", "--GenerateInstance", default=False, action="store_true")
+parser.add_argument("-in", "--InstanceName", default="Null", type=str)
 args = parser.parse_args()
-instanceName = path.basename(args.instance)
+
+instanceName = args.InstanceName
+if args.InstanceName == "Null":
+    instanceName = path.basename(args.instance)
 
 if(args.GenerateInstance == False):
 
     print("PrioritizedPlanning-Start")
 
     ppSolution = prioritized_planning.PrioritizedPlanningSolver(args.instance,False,False,10,NULL).solve()
-    ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP"],'max_horizon': [ppSolution.max_horizon],'cost' : [ppSolution.cost],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
+    ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'sub_tag':[0],'solver':["PP"],'max_horizon': [ppSolution.max_horizon],'cost' : [ppSolution.cost],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
     ppdf.to_csv('results.csv', mode='a', index=False, header = not os.path.exists('results.csv'))
 
     saveInstanceInfo(instanceName,ppSolution)
 
     print("SequentialPlanning-Start")
     spSolution = sequential_planning.benchmark(args.instance).result
-    spdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["SP"],'max_horizon': [spSolution.max_horizon],'cost' : [spSolution.cost],'exec_time' : [spSolution.execution_time],'satisfied' : [spSolution.satisfied]})
+    spdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'sub_tag':[0],'solver':["SP"],'max_horizon': [spSolution.max_horizon],'cost' : [spSolution.cost],'exec_time' : [spSolution.execution_time],'satisfied' : [spSolution.satisfied]})
     spdf.to_csv('results.csv', mode='a', index=False, header = False)
 
 
     print("CBS-Start")
     cbsSolution = cbs_solver.CBS_Solver(args.instance,False,NULL).solve()
-    cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["CBS"],'max_horizon': [cbsSolution.max_horizon],'cost' : [cbsSolution.cost],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+    cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'sub_tag':[0],'solver':["CBS"],'max_horizon': [cbsSolution.max_horizon],'cost' : [cbsSolution.cost],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
     cbsdf.to_csv('results.csv', mode='a', index=False, header = False)
 
 else:
     for i in range(1,5):
-        modinstanceName = instanceName + str(i)
-        GenerateInstance.createInstance(5 + 5*i,5*i,5 + 5*i,0)
-        print("PrioritizedPlanning-Start")
+        print("Iteration " + str(i))
+        for j in range(1,5):
+            print("     Sub-Iteration " + str(j))
+            modinstanceName = instanceName + str(i) + "." + str(j)
+            GenerateInstance.createInstance(5 + 5*i,5*i,1,0)
+            print("         PrioritizedPlanning-Start")
 
-        ppSolution = prioritized_planning.PrioritizedPlanningSolver(args.instance,False,False,10,NULL).solve()
-        ppdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'solver':["PP"],'max_horizon': [ppSolution.max_horizon],'cost' : [ppSolution.cost],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
-        ppdf.to_csv('results.csv', mode='a', index=False, header = not os.path.exists('results.csv'))
-        saveInstanceInfo(modinstanceName,ppSolution)
+            ppSolution = prioritized_planning.PrioritizedPlanningSolver(args.instance,False,False,10,NULL).solve()
+            ppdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'sub_tag':[j],'solver':["PP"],'max_horizon': [ppSolution.max_horizon],'cost' : [ppSolution.cost],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
+            ppdf.to_csv('results.csv', mode='a', index=False, header = not os.path.exists('results.csv'))
+            saveInstanceInfo(modinstanceName,ppSolution)
 
-        print("SequentialPlanning-Start")
-        spSolution = sequential_planning.benchmark(args.instance).result
-        spdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'solver':["SP"],'max_horizon': [spSolution.max_horizon],'cost' : [spSolution.cost],'exec_time' : [spSolution.execution_time],'satisfied' : [spSolution.satisfied]})
-        spdf.to_csv('results.csv', mode='a', index=False, header = False)
+            print("         SequentialPlanning-Start")
+            spSolution = sequential_planning.benchmark(args.instance).result
+            spdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'sub_tag':[j],'solver':["SP"],'max_horizon': [spSolution.max_horizon],'cost' : [spSolution.cost],'exec_time' : [spSolution.execution_time],'satisfied' : [spSolution.satisfied]})
+            spdf.to_csv('results.csv', mode='a', index=False, header = False)
 
-        print("CBS-Start")
-        cbsSolution = cbs_solver.CBS_Solver(args.instance,False,NULL).solve()
-        cbsdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'solver':["CBS"],'max_horizon': [cbsSolution.max_horizon],'cost' : [cbsSolution.cost],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-        cbsdf.to_csv('results.csv', mode='a', index=False, header = False)
+            print("         CBS-Start")
+            cbsSolution = cbs_solver.CBS_Solver(args.instance,False,NULL).solve()
+            cbsdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'sub_tag':[j],'solver':["CBS"],'max_horizon': [cbsSolution.max_horizon],'cost' : [cbsSolution.cost],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+            cbsdf.to_csv('results.csv', mode='a', index=False, header = False)
 

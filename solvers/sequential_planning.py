@@ -78,6 +78,8 @@ class SequentialPlanner:
         ctl.solve(on_model=self.standard_parser)
 
         for robot in self.robots:
+            if(self.verbose):
+                print("Generate Path for Robot: "+ robot)
             ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon="+str(self.result.max_horizon),"-Wnone"])
             ctl.load(self.instance_file)
             ctl.load(self.singleAgentPF)
