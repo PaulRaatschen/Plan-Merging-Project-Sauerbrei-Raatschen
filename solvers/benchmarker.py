@@ -5,7 +5,7 @@ import os
 import sys
 import pandas as pd
 import prioritized_planning
-import sequential_planning
+import sequential_planningcopy as sequential_planning
 import cbs_solver
 from solution import Solution
 
@@ -62,12 +62,12 @@ if(args.GenerateInstance == False):
     cbsdf.to_csv('results.csv', mode='a', index=False, header = False)
 
 else:
-    for i in range(1,5):
+    for i in range(1,20):
         print("Iteration " + str(i))
         for j in range(1,5):
             print("     Sub-Iteration " + str(j))
             modinstanceName = instanceName + str(i) + "." + str(j)
-            GenerateInstance.createInstance(5 + 5*i,5*i,1,0)
+            GenerateInstance.createInstance(5 + 2*i,5+2*i,i,0)
             print("         PrioritizedPlanning-Start")
 
             ppSolution = prioritized_planning.PrioritizedPlanningSolver(args.instance,False,False,10,NULL).solve()
