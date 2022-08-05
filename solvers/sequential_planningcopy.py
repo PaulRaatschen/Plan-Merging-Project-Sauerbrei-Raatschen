@@ -1,8 +1,8 @@
-
 from clingo import Control, Number, Function
 from time import time
 from os import path
 import argparse
+import solution
 
 class SequentialPlanner:
 
@@ -26,7 +26,7 @@ class SequentialPlanner:
 
 
         self.setup = path.join(ENCODING_DIR,'setup.lp')
-        self.singleAgentPF = path.join(ENCODING_DIR,'singleAgentPF.lp')
+        self.singleAgentPF = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
         self.collisionToRPosition = path.join(ENCODING_DIR,'collisionToRPosition.lp') 
         self.postprocessing_file = path.join(ENCODING_DIR,'rPositionToCollision.lp')
 
@@ -42,20 +42,83 @@ class SequentialPlanner:
         self.vertexIterations = args.vertexIterations
         self.ConflictStep = False
         self.edgeCollisionFound = False
+        self.result = solution.Solution()
 
         self.benchmark = args.benchmark
 
         self.verbose = args.verbose
+        time_start = time()
+        self.solve()
+        time_end = time()
+
+        self.result.execution_time = time_end-time_start
+        if(self.edgeIterations == 0 or self.vertexIterations == 0):
+            self.result.satisfied = False
+        else:
+            self.result.satisfied = True
+
+
 
         if self.benchmark:
-            time_start = time()
-            self.solve()
-            time_end = time()
+
 
             print(f"Execution Time: {time_end-time_start:.3f} seconds")
-        else:
-            self.solve()
 
+    def incremental_solving(self, ctl : Control, max_horizon : int, model_parser) -> None:
+
+        ret, step = None, 0
+
+        while((step < max_horizon) and (ret is None or (step < max_horizon and not ret.satisfiable))):
+            parts = []
+            parts.append(("check", [Number(step)]))
+            if step > 0:
+                ctl.release_external(Function("query", [Number(step - 1)]))
+                parts.append(("step", [Number(step)]))
+            else:
+                parts.append(("base", []))
+            ctl.ground(parts)
+            ctl.assign_external(Function("query", [Number(step)]), True)
+            ret, step = ctl.solve(on_model=model_parser), step + 1   
+
+
+
+    def plan_path(self, agent : int) -> bool:
+
+        ctl : Control
+        cost : int
+        old_cost : int = 0
+
+        self.result.plans[agent] = {'occurs' : [],'positions' : [], 'cost' : 0}
+
+
+        if(self.verbose):
+            print("Planning for agent ",agent )
+
+        def plan_path_parser(model, agent : int, solution) -> bool:
+            for atom in model.symbols(shown=True):
+                    if(atom.name == 'occurs'):
+                        solution.plans[agent]['occurs'].append(atom)
+                    else:
+                        solution.plans[agent]['positions'].append(atom)
+            return False
+
+        ctl = Control(arguments=['-Wnone',f'-c r={agent}'])
+
+        ctl.load(self.singleAgentPF)
+
+        with ctl.backend() as backend:
+            for atom in self.standard_facts:
+                fact = backend.add_atom(atom)
+                backend.add_rule([fact])
+
+
+        cost = self.incremental_solving(ctl,self.result.max_horizon,lambda model : plan_path_parser(model,agent,self.result))
+
+
+        if(self.verbose):
+            print("Finished solving for agent ", agent)
+
+        
     def solve(self):
 
         ctl = Control(arguments=["-Wnone"])
@@ -69,18 +132,16 @@ class SequentialPlanner:
         ctl.solve(on_model=self.standard_parser)
 
         for robot in self.robots:
-            ctl = Control(["--opt-mode=opt",f"-c id={robot}","-c horizon=30","-Wnone"])
-            ctl.load(self.instance_file)
-            ctl.load(self.singleAgentPF)
-            
-            ctl.ground([("base",[])])
-            
-            ctl.solve(on_model=self.singleAgentPF_parser)
+            self.plan_path(robot)
 
         ctl = Control(arguments=["-Wnone"])
 
-        for atom in self.individualRobotPaths:
-            ctl.add("base",[],f"{atom}.")
+        with ctl.backend() as backend:
+            for plan in self.result.plans.values():
+                for atom in plan['occurs']:
+                    fact = backend.add_atom(atom)
+                    backend.add_rule([fact])
+
 
         ctl.load(self.instance_file)
         ctl.load(self.collisionToRPosition)
@@ -110,11 +171,22 @@ class SequentialPlanner:
 
         ctl.solve(on_model=self.standard_parser)
 
+        self.result.max_horizon = 0
+        for atom in self.standard_facts:
+                if atom.name == "occurs":
+                    self.result.cost += 1
+                    if( atom.arguments[2].number > self.result.max_horizon):
+                        self.result.max_horizon = atom.arguments[2].number
+
         with open("plan.lp",'w') as output:
             for atom in self.model:
+
+
                 output.write(f"{str(atom)}. ")
+
             for atom in self.standard_facts:
                 output.write(f"{str(atom)}. ")
+        return self.result
     
     def standard_parser(self,model):
 
@@ -125,6 +197,9 @@ class SequentialPlanner:
         for atom in model.symbols(shown=True):
             if(atom.name == "init"):
                 self.model.append(atom)
+                self.result.instance_atoms.append(atom)
+            elif(atom.name == 'numOfNodes'):
+                self.result.max_horizon = atom.arguments[0].number * 2
 
             elif(atom.name == "numOfRobots"):
                                 
@@ -192,7 +267,8 @@ class SequentialPlanner:
             
             #if no edge collision was found, end edge iteration
             else:
-                print("Edge, stopped after iteration " + str(self.maxEdgeIterations - self.edgeIterations))
+                if(self.verbose):
+                    print("Edge, stopped after iteration " + str(self.maxEdgeIterations - self.edgeIterations))
 
                 return
     def solveVertex(self):
@@ -244,19 +320,16 @@ class SequentialPlanner:
                 #repeat
             else:
                 break
-    def benchmark(instancePath):
-        parser = argparse.ArgumentParser()
+def benchmark(instancePath):
+    args = argparse.Namespace()
+    args.instance = instancePath
+    args.edgeIterations = 80
+    args.vertexIterations = 120
+    args.benchmark = False
+    args.verbose = False
 
-        parser.add_argument("-instance", type=str,default = instancePath)
-        parser.add_argument("edgeIterations",default=10, type=int)
-        parser.add_argument("vertexIterations",default=20, type=int)
+    return SequentialPlanner(args)
 
-        parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-
-        parser.add_argument("-v", "--verbose", default=False, action="store_true")
-
-        args = parser.parse_args()
-        SequentialPlanner(args)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

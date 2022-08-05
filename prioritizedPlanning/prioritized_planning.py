@@ -173,7 +173,7 @@ def plan_path(agent : int, solution : Solution) -> bool:
 
     solution.plans[agent] = {'occurs' : [],'positions' : [], 'cost' : inf}
 
-    def plan_path_parser(model : Model, agent : int, solution : Solution):
+    def plan_path_parser(model : Model, agent : int, solution : Solution) -> bool:
         for atom in model.symbols(shown=True):
                 if(atom.name == 'occurs'):
                     solution.plans[agent]['occurs'].append(atom)

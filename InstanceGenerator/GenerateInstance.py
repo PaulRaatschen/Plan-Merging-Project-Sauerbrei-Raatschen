@@ -4,28 +4,8 @@ from turtle import left, right, up
 
 
 class GenerateInstance:
-    def __init__(self):
-        parser = argparse.ArgumentParser()
+    def __init__(self, args):
 
-        parser.add_argument("width", type=int)
-
-        parser.add_argument("height", type=int)
-
-        parser.add_argument("numberOfRobots", type=int)
-
-        parser.add_argument("mapType", type=str)
-
-        parser.add_argument("-hLines","--horizontalLines",default = 3 ,type=int)
-        parser.add_argument("-vLines","--verticalLines",default = 3 ,type=int)
-
-        parser.add_argument("-nRooms","--numberOfRooms",default = 3 ,type=int)
-
-        parser.add_argument("-cr", "--clusterRobots", default=False, action="store_true")
-        parser.add_argument("-cs", "--clusterShelves", default=False, action="store_true")
-
-        #parser.add_argument("-o", "--optimize", default=False, action="store_true")
-
-        args = parser.parse_args()
 
         self.width = args.width
 
@@ -38,8 +18,6 @@ class GenerateInstance:
         self.verticalLines = args.verticalLines
         self.numberOfRooms = args.numberOfRooms
 
-        self.clusterRobots = args.clusterRobots
-        self.clusterShelves = args.clusterShelves
 
         self.generate()
 
@@ -144,14 +122,7 @@ class GenerateInstance:
                                 self.Field[i][right] = "FutureWall"
                             break
                         else:
-                            break
-                            pass
-                        
-                            
-                    
-
-                
-
+                            continue
             for room in rooms:
 
                 left = room[0][0]
@@ -165,19 +136,13 @@ class GenerateInstance:
                 for i in range(up,down+1):
                     self.Field[i][left] = 1
                     self.Field[i][right] = 1
-            
-            print(str(len(rooms)) + " Räume wurden erstellt")
 
             for room in rooms:
-                
-                
                 while True:
-                    
                     left = room[0][0]
                     right = room[1][0]
                     up = room[0][1]
                     down = room[1][1]
-
                     randomint = random.randint(0,3)
 
                     if randomint == 0:
@@ -210,50 +175,39 @@ class GenerateInstance:
                             self.Field[doorplacement][right] = 0
                             break
                     
-                
-                
-
-
-            
-
-
     def placeRobots(self):
         #Place Robots
-        if self.clusterRobots:
-            pass
-        else:
-            for i in range(0,self.numberOfRobots):
-                
-                while True:
 
-                    randomX = random.randint(0,self.width-1)
-                    randomY = random.randint(0,self.height-1)
-                    
-                    if self.Field[randomY][randomX] == 0:
-                            self.Field[randomY][randomX] = ["R" + str(i),"empty"]
-                            break
+        for i in range(0,self.numberOfRobots):
+            
+            while True:
+
+                randomX = random.randint(0,self.width-1)
+                randomY = random.randint(0,self.height-1)
+                
+                if self.Field[randomY][randomX] == 0:
+                        self.Field[randomY][randomX] = ["R" + str(i),"empty"]
+                        break
     
     def placeShelves(self):
         #Place Shelves
-        if self.clusterShelves:
-            pass
-        else:
-            for i in range(0,self.numberOfRobots):
+
+        for i in range(0,self.numberOfRobots):
+            
+            while True:
+
+                randomX = random.randint(0,self.width-1)
+                randomY = random.randint(0,self.height-1)
                 
-                while True:
 
-                    randomX = random.randint(0,self.width-1)
-                    randomY = random.randint(0,self.height-1)
-                    
-
-                    if self.Field[randomY][randomX] == 1: 
-                        continue
-                    if self.Field[randomY][randomX] == 0:
-                            self.Field[randomY][randomX] = ["empty","S" + str(i)]
-                            break
-                    elif self.Field[randomY][randomX][1] == "empty":
-                            self.Field[randomY][randomX][1] = ("S" + str(i))
-                            break
+                if self.Field[randomY][randomX] == 1: 
+                    continue
+                if self.Field[randomY][randomX] == 0:
+                        self.Field[randomY][randomX] = ["empty","S" + str(i)]
+                        break
+                elif self.Field[randomY][randomX][1] == "empty":
+                        self.Field[randomY][randomX][1] = ("S" + str(i))
+                        break
 
     def saveField(self):
         textFile = "#program base.\n\n%init\n"
@@ -284,8 +238,38 @@ class GenerateInstance:
         f.close()
 
 
+def createInstance(XSize, YSize, nRobots, nRooms):
+    args = argparse.Namespace()
+
+    args.width = XSize
+    args.height = YSize
+    args.numberOfRobots = nRobots
+    args.mapType = "Rooms"
+    args.verticalLines = 0
+    args.horizontalLines = 0
+    args.numberOfRooms = nRooms
+    GenerateInstance(args)    
+
+
 if __name__ == "__main__":
-    GenerateInstance()    
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("width", type=int)
+
+    parser.add_argument("height", type=int)
+
+    parser.add_argument("numberOfRobots", type=int)
+
+    parser.add_argument("mapType", type=str)
+
+    parser.add_argument("-hLines","--horizontalLines",default = 3 ,type=int)
+    parser.add_argument("-vLines","--verticalLines",default = 3 ,type=int)
+
+    parser.add_argument("-nRooms","--numberOfRooms",default = 3 ,type=int)
+
+
+    args = parser.parse_args()
+    GenerateInstance(args)    
 
         
 
