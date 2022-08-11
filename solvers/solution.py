@@ -103,6 +103,27 @@ class Solution:
             total_moves += len(plan['occurs'])
 
         return total_moves
+
+    def get_norm_total_moves(self) -> float:
+        if not self.initial_plans:
+            self.get_initial_plans()
+        
+        total : int = 0
+
+        for plan in self.initial_plans.values():
+            total += len(plan['occurs'])
+
+        return self.get_total_moves() / total
+
+    def get_norm_soc(self) -> float:
+        info : Dict[str,Dict[int,List[Symbol]],int,int] = self.get_initial_plan_info()
+
+        return self.cost / info['soc']
+
+    def get_norm_makespan(self) -> float:
+        info : Dict[str,Dict[int,List[Symbol]],int,int] = self.get_initial_plan_info()
+
+        return self.get_makespan() / info['makespan']
     
     def get_density(self) -> float:
         return len(self.agents) * 2 / (self.num_of_nodes / 2)
