@@ -28,3 +28,8 @@ class Solution:
             for plan in self.plans.values():
                 for occur in plan['occurs']:
                     file.write(f"{occur}. ")
+
+    
+        
+    
+
