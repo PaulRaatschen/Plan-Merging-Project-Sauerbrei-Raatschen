@@ -47,7 +47,7 @@ class CTNode:
     def __init__(self,plans : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]=None, constraints : List[Symbol]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0) -> None:
         self.plans = plans if plans else {}
         self.constraints = constraints if constraints else []
-        self.conflic_matrix = conflict_matrix if conflict_matrix else ConflictMatrix([])
+        self.conflic_matrix = conflict_matrix
         self.atoms = atoms
         self.cost = cost
 
@@ -75,7 +75,7 @@ class CTNode:
 
     def low_level(self,agent : int, horizon : int) -> bool:
         if not self.conflic_matrix:
-            return self.low_level_ma(agent,horizon)
+            return self.low_level_sa(agent,horizon)
         elif self.conflic_matrix.is_meta_agent(agent):
             return self.low_level_ma(agent,horizon)
         else:
@@ -88,10 +88,14 @@ class CTNode:
         step : int = 0 
         ret : SolveResult = None
         handle : SolveHandle = None
+        optimal_model : Model = None
+
+        logger.debug(f"low level search invoked for meta agent {meta_agent}")
 
         for index, agt in enumerate(meta_agent):
             if agt in self.plans:
                 old_costs[index] = self.plans[agent]['cost']
+            self.plans[agent] = {'positions' : [], 'occurs' : [], 'cost' : 0}
 
         ctl.load(MAPF_FILE)
 
@@ -101,7 +105,7 @@ class CTNode:
                 backend.add_rule([fact])
 
             for agt in meta_agent:
-                fact = backend.add_atom(Function(name='planning',arguments=[Number(agent)]))
+                fact = backend.add_atom(Function(name='planning',arguments=[Number(agt)]))
                 backend.add_rule([fact])
 
         while ((step < horizon) and (ret is None or (not ret.satisfiable))):
@@ -118,16 +122,20 @@ class CTNode:
                 ret = handle.get()
                 step += 1
                 if ret.satisfiable:
-                    *_, optimal_model = handle
+                    optimal_model = handle.model()
+                    for optimal_model in handle:
+                        pass
                     for atom in optimal_model.symbols(shown=True):
                         if atom.name == 'occurs':
-                            self.plans[atom.arguments[0].number]['occurs'].append(atom)
+                            self.plans[atom.arguments[0].arguments[1].number]['occurs'].append(atom)
                         elif atom.name == 'goalReached':
                             agt : int = atom.arguments[0].number 
                             self.plans[agt]['cost'] = atom.arguments[1].number - old_costs[agt]
                             self.plans[agt]['positions'].append(atom)
                         else:
                             self.plans[atom.arguments[0].number]['positions'].append(atom)
+
+        logger.debug(f"low level search terminated for meta agent {meta_agent}")
                         
         return ret.satisfiable
         
@@ -275,36 +283,35 @@ class ConflictMatrix:
             self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
 
     def should_merge(self,agent1 : int, agent2 : int, cthreshold : int) -> bool:
-        return self._conflict_count(agent1,agent2) >= cthreshold
+        return self._get_c_count(agent1,agent2) >= cthreshold
 
-    def _get_ccount(self,agent1 : int, agent2 : int) -> int:
-        return self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)]
+    def _c_count(self,agent1 : int, agent2 : int) -> int:
+        return self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1]
 
-    def _conflict_count(self, agent1 : int,agent2 : int) -> int:
+    def _get_c_count(self, agent1 : int,agent2 : int) -> int:
         if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
             if agent1 > agent2:
                 temp : int = agent1
                 agent1 = agent2
                 agent2 = temp
             total_conflicts : int = 0
-            #this needs fixing
-            self.conflict_matrix[(agent1-1)*(ceil(len(self.meta_agents)/2)-1)+(agent2-1)] += 1
+            self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1] += 1
             
             if self.is_meta_agent(agent1) and self.is_meta_agent(agent2):
                 for a1 in self.meta_agents[agent1-1]:
                     for a2 in self.meta_agents[agent2-1]:
-                        total_conflicts += self._get_ccount(a1,a2)
+                        total_conflicts += self._c_count(a1,a2)
             
             if self.is_meta_agent(agent1):
                 for agent in self.meta_agents[agent1-1]:
-                    total_conflicts += self._get_ccount(agent,agent2)
+                    total_conflicts += self._c_count(agent,agent2)
 
             if self.is_meta_agent(agent2):
                 for agent in self.meta_agents[agent2-1]:
-                    total_conflicts += self._get_ccount(agent,agent1)
+                    total_conflicts += self._c_count(agent,agent1)
             
             else:
-                total_conflicts += self._get_ccount(agent1,agent2)
+                total_conflicts += self._c_count(agent1,agent2)
 
             return total_conflicts
                       
