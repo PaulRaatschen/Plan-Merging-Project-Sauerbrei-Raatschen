@@ -12,7 +12,7 @@ from math import inf
 import logging
 from copy import deepcopy, copy
 from solution import Solution
-
+from math import ceil
 
 """Logging setup"""
 logger = logging.getLogger(__name__)
@@ -287,7 +287,8 @@ class ConflictMatrix:
                 agent1 = agent2
                 agent2 = temp
             total_conflicts : int = 0
-            self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
+            #this needs fixing
+            self.conflict_matrix[(agent1-1)*(ceil(len(self.meta_agents)/2)-1)+(agent2-1)] += 1
             
             if self.is_meta_agent(agent1) and self.is_meta_agent(agent2):
                 for a1 in self.meta_agents[agent1-1]:

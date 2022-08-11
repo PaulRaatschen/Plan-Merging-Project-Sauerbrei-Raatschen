@@ -128,7 +128,6 @@ class PrioritizedPlanningSolver():
 
         ctl : Control
         cost : int
-        old_cost : int = 0
         max_iter : int = self.solution.num_of_nodes * 2
 
         if agent in self.solution.plans:
@@ -163,7 +162,6 @@ class PrioritizedPlanningSolver():
         cost = self.incremental_solving(ctl,max_iter,lambda model : plan_path_parser(model,agent,self.solution))
 
         self.solution.plans[agent]['cost'] = cost
-        self.solution.cost += (cost-old_cost)
 
         logger.debug(f'Planning finished with cost {cost}')
 

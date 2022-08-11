@@ -9,7 +9,7 @@ from cbs import CBSSolver
 from solution import Solution
 from generate_instance import GenerateInstance
 
-'''Logging setup'''
+'''Command line argument parsing'''
 parser : ArgumentParser = ArgumentParser()
 parser.add_argument("instance", type=str)
 parser.add_argument("-tag", type=int,default = 0)

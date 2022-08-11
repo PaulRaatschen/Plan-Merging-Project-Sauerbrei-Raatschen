@@ -88,6 +88,16 @@ class Solution:
 
         return result
 
+    def get_soc(self) -> int:
+        if self.cost > 0:
+            return self.cost
+        else:
+            cost : int = 0
+            for plan in self.plans.values():
+                cost += plan['cost']
+            return cost
+
+
     def get_makespan(self) -> int:
 
         if self.makespan == 0:
@@ -118,7 +128,7 @@ class Solution:
     def get_norm_soc(self) -> float:
         info : Dict[str,Dict[int,List[Symbol]],int,int] = self.get_initial_plan_info()
 
-        return self.cost / info['soc']
+        return self.get_soc() / info['soc']
 
     def get_norm_makespan(self) -> float:
         info : Dict[str,Dict[int,List[Symbol]],int,int] = self.get_initial_plan_info()
@@ -126,7 +136,7 @@ class Solution:
         return self.get_makespan() / info['makespan']
     
     def get_density(self) -> float:
-        return len(self.agents) * 2 / (self.num_of_nodes / 2)
+        return len(self.agents) * 2 / (self.num_of_nodes)
 
     def save_initial_plans(self,filepath : str) -> None:
 
