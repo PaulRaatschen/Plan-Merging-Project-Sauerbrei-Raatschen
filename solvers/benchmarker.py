@@ -1,12 +1,10 @@
 from argparse import ArgumentParser
-from asyncio.windows_events import NULL
 from os import path
-import os
 import sys
 import pandas as pd
 import prioritized_planning
 import sequential_planning
-import cbs_solver
+from cbs import CBSSolver
 from solution import Solution
 
 sys.path.append('../InstanceGenerator')
@@ -25,7 +23,7 @@ def saveInstanceInfo(Name,solution):
         
 
     instance = pd.DataFrame({'instance': [Name],'Xsize':xSize,'Ysize':ySize,'blocked_nodes': xSize*ySize-nodecount, 'number_of_agents': len(solution.agents)})
-    instance.to_csv('instance.csv', mode='a', index=False, header = not os.path.exists('instance.csv'))
+    instance.to_csv('instance.csv', mode='a', index=False, header = not path.exists('instance.csv'))
 
 
 
@@ -42,7 +40,7 @@ if(args.GenerateInstance == False):
 
     ppSolution = prioritized_planning.PrioritizedPlanningSolver(args.instance,False,False,10,NULL).solve()
     ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP"],'max_horizon': [ppSolution.max_horizon],'cost' : [ppSolution.cost],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
-    ppdf.to_csv('results.csv', mode='a', index=False, header = not os.path.exists('results.csv'))
+    ppdf.to_csv('results.csv', mode='a', index=False, header = not path.exists('results.csv'))
 
     saveInstanceInfo(instanceName,ppSolution)
 
@@ -53,7 +51,7 @@ if(args.GenerateInstance == False):
 
 
     print("CBS-Start")
-    cbsSolution = cbs_solver.CBS_Solver(args.instance,False,NULL).solve()
+    cbsSolution = CBSSolver(args.instance,False,NULL).solve()
     cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["CBS"],'max_horizon': [cbsSolution.max_horizon],'cost' : [cbsSolution.cost],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
     cbsdf.to_csv('results.csv', mode='a', index=False, header = False)
 
@@ -74,7 +72,7 @@ else:
         spdf.to_csv('results.csv', mode='a', index=False, header = False)
 
         print("CBS-Start")
-        cbsSolution = cbs_solver.CBS_Solver(args.instance,False,NULL).solve()
+        cbsSolution = CBSSolver(args.instance,False,None).solve()
         cbsdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'solver':["CBS"],'max_horizon': [cbsSolution.max_horizon],'cost' : [cbsSolution.cost],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
         cbsdf.to_csv('results.csv', mode='a', index=False, header = False)
 

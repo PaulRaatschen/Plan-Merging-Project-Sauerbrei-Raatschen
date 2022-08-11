@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ctypes import Union
 from typing import Callable, List, Set, Tuple
 from clingo import Control, Number, Function, Symbol, Model
 from time import perf_counter
@@ -7,6 +8,7 @@ from os import path
 from argparse import ArgumentParser, Namespace
 from sys import stdout
 from solution import Solution
+import permutation_tools as pt
 import logging
 
 """Logging setup"""
@@ -34,7 +36,8 @@ class PrioritizedPlanningSolver():
         self.optimize = optimize
         self.backtrack = backtrack
         self.maxdepth = maxdepth
-        self.solution : Solution = None
+        self.max_horion : int = 0
+        self.solution : Solution = Solution()
         logger.setLevel(log_level)
 
 
@@ -50,7 +53,7 @@ class PrioritizedPlanningSolver():
                 elif(atom.name == 'numOfRobots'):
                     solution.agents = list(range(1,atom.arguments[0].number+1))
                 elif(atom.name == 'numOfNodes'):
-                    solution.max_horizon = atom.arguments[0].number * 2
+                    solution.num_of_nodes = atom.arguments[0].number
                 else:
                     solution.instance_atoms.append(atom)
 
@@ -101,7 +104,7 @@ class PrioritizedPlanningSolver():
                     fact = backend.add_atom(atom)
                     backend.add_rule([fact])
 
-            plan_lenghts[agent-1] = self.incremental_solving(ctl,self.solution.max_horizon,lambda model : positions.extend(model.symbols(shown=True)))
+            plan_lenghts[agent-1] = self.incremental_solving(ctl,self.solution.num_of_nodes*2,lambda model : positions.extend(model.symbols(shown=True)))
 
             logger.debug(f'Optimal Plan for agent {agent} with cost {plan_lenghts[agent-1]}')
 
@@ -120,31 +123,13 @@ class PrioritizedPlanningSolver():
         ctl.solve(on_model=lambda model : optimization_parser(model,schedule))
 
         return schedule
-  
-    def incremental_solving(self, ctl : Control, max_horizon : int, model_parser : Callable[[Model],bool]) -> int:
-
-        ret, step = None, 0
-
-        while((step < max_horizon) and (ret is None or (step < max_horizon and not ret.satisfiable))):
-            parts = []
-            parts.append(("check", [Number(step)]))
-            if step > 0:
-                ctl.release_external(Function("query", [Number(step - 1)]))
-                parts.append(("step", [Number(step)]))
-            else:
-                parts.append(("base", []))
-            ctl.ground(parts)
-            ctl.assign_external(Function("query", [Number(step)]), True)
-            ret, step = ctl.solve(on_model=model_parser), step + 1   
-
-        return inf  if not ret or (not ret.satisfiable) else step - 1
-
 
     def plan_path(self, agent : int) -> bool:
 
         ctl : Control
         cost : int
         old_cost : int = 0
+        max_iter : int = self.solution.num_of_nodes * 2
 
         if agent in self.solution.plans:
             old_cost = self.solution.plans[agent]['cost'] 
@@ -175,15 +160,14 @@ class PrioritizedPlanningSolver():
                     fact = backend.add_atom(position)
                     backend.add_rule([fact])
 
-        cost = self.incremental_solving(ctl,self.solution.max_horizon,lambda model : plan_path_parser(model,agent,self.solution))
+        cost = self.incremental_solving(ctl,max_iter,lambda model : plan_path_parser(model,agent,self.solution))
 
         self.solution.plans[agent]['cost'] = cost
         self.solution.cost += (cost-old_cost)
 
         logger.debug(f'Planning finished with cost {cost}')
 
-        return cost < inf
-
+        return cost < inf    
 
     def solve(self) -> Solution:
 
@@ -191,11 +175,14 @@ class PrioritizedPlanningSolver():
         
         self.preprocessing()
 
-        ordering : List[int] = self.solution.agents
-        orderings : Set[Tuple[int]] = set(ordering)
+        ordering : List[int] = self.solution.agents.copy()
+        orderings : List[List[int]] = []
         finished_index : int = 0 
         t_start : float = perf_counter()
         satisfied : bool
+        perm_index : Union[None,int]
+        agent_to_swap : int
+        num_of_agents : int = len(ordering)
 
         if self.optimize:
             schedule : List[int] = self.optimize_schedule()
@@ -205,11 +192,13 @@ class PrioritizedPlanningSolver():
 
             solution.clear_plans()
         
-        while self.maxdepth > 0:
+        for _ in range(self.maxdepth):
 
             satisfied = True
 
             for index, agent in  enumerate(ordering[finished_index:]):
+
+                logger.debug(f'Current robot planning {index}')
 
                 if not self.plan_path(agent):
                     satisfied = False
@@ -217,16 +206,31 @@ class PrioritizedPlanningSolver():
 
                     if self.backtrack and index > 0:
                         finished_index = index - 1
-                        agent_to_swap : int = ordering[index-1]
+                        pt.update_pos(pt.partial_perm_index(ordering[:index],num_of_agents),orderings,num_of_agents)
+                        agent_to_swap = ordering[index-1]
                         ordering[index-1] = ordering[index]
                         ordering[index] = agent_to_swap
-                        if tuple(ordering) in orderings:
-                            logger.debug("Repetition in oderings")
-                            self.maxdepth = 1
+                        
+                        perm_index = pt.update_pos([pt.permutation_index(ordering)],orderings,num_of_agents)
+
+                        if perm_index:
+                            if perm_index < 0:
+                                logger.debug("Exhauset all orderings")
+                                self.backtrack = False
+                            else:
+                                finished_index = 0
+                                old_order : List[int] = ordering
+                                ordering = pt.index_to_perm(index,num_of_agents)
+                                while old_order[finished_index] == ordering[finished_index] and finished_index < num_of_agents:
+                                    finished_index += 1
+                                for ag in range(finished_index,num_of_agents):
+                                    self.solution.clear_plan(ag)
+
                         else:
-                            orderings.add(tuple(ordering))
-                        solution.clear_plan(agent_to_swap)
-                        self.maxdepth -= 1
+                            self.solution.clear_plan(agent_to_swap) 
+
+                        logger.debug(f'New ordering : {ordering}')
+                        
                         break
 
             if not self.backtrack or satisfied:
@@ -244,14 +248,26 @@ class PrioritizedPlanningSolver():
         
         return self.solution
 
-def benchmark(instancePath : str) -> Solution:
+    @staticmethod   
+    def incremental_solving(ctl : Control, max_horizon : int, model_parser : Callable[[Model],bool]) -> int:
+
+        ret, step = None, 0
+
+        while((step < max_horizon) and (ret is None or (step < max_horizon and not ret.satisfiable))):
+            parts = []
+            parts.append(("check", [Number(step)]))
+            if step > 0:
+                ctl.release_external(Function("query", [Number(step - 1)]))
+                parts.append(("step", [Number(step)]))
+            else:
+                parts.append(("base", []))
+            ctl.ground(parts)
+            ctl.assign_external(Function("query", [Number(step)]), True)
+            ret, step = ctl.solve(on_model=model_parser), step + 1   
+
+        return inf  if not ret or (not ret.satisfiable) else step - 1  
 
 
-
-
-
-    solution = PrioritizedPlanningSolver(instancePath,False,False,10,logging.INFO).solve()
-    return solution
 
 if __name__ == "__main__":
 

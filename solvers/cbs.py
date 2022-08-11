@@ -1,8 +1,9 @@
 from __future__ import annotations
 from bisect import insort
 from typing import Dict, List, Tuple, Union
+from unicodedata import name
 from clingo import Control, Number, Function, Symbol, Model
-from clingo.solving import SolveResult
+from clingo.solving import SolveResult, SolveHandle
 from time import perf_counter
 from os import path
 from argparse import ArgumentParser, Namespace
@@ -21,14 +22,15 @@ handler = logging.StreamHandler(stdout)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-
-
 """Directorys and asp files"""
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
 SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
+MAPF_FILE : str = path.join(ENCODING_DIR,'multiAgentPF_inc.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
+
+META_AGENT_THRESHOLD : int = 2
 
 class CTNode:
     """
@@ -42,9 +44,10 @@ class CTNode:
         branch(self,conflict : Symbol) -> Tuple[CTNode,CTNode]    
     """
 
-    def __init__(self,plans : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]=None, constraints : List[Symbol]=None, atoms : List[Symbol]=None, cost : int = 0) -> None:
+    def __init__(self,plans : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]=None, constraints : List[Symbol]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0) -> None:
         self.plans = plans if plans else {}
         self.constraints = constraints if constraints else []
+        self.conflic_matrix = conflict_matrix if conflict_matrix else ConflictMatrix([])
         self.atoms = atoms
         self.cost = cost
 
@@ -71,6 +74,65 @@ class CTNode:
         return not self.__gt__(other)
 
     def low_level(self,agent : int, horizon : int) -> bool:
+        if not self.conflic_matrix:
+            return self.low_level_ma(agent,horizon)
+        elif self.conflic_matrix.is_meta_agent(agent):
+            return self.low_level_ma(agent,horizon)
+        else:
+            return self.low_level_sa(agent,horizon)
+
+    def low_level_ma(self,agent : int, horizon : int) -> bool:
+        meta_agent : Tuple[int] = self.conflic_matrix.meta_agents[agent-1]
+        old_costs : List[int] = [0] * len(meta_agent)
+        ctl : Control = Control(['-Wnone'])
+        step : int = 0 
+        ret : SolveResult = None
+        handle : SolveHandle = None
+
+        for index, agt in enumerate(meta_agent):
+            if agt in self.plans:
+                old_costs[index] = self.plans[agent]['cost']
+
+        ctl.load(MAPF_FILE)
+
+        with ctl.backend() as backend:
+            for atom in self.atoms + self.constraints:
+                fact = backend.add_atom(atom)
+                backend.add_rule([fact])
+
+            for agt in meta_agent:
+                fact = backend.add_atom(Function(name='planning',arguments=[Number(agent)]))
+                backend.add_rule([fact])
+
+        while ((step < horizon) and (ret is None or (not ret.satisfiable))):
+            parts : List[Tuple[str,List[Symbol]]] = []
+            parts.append(("check", [Number(step)]))
+            if step > 0:
+                ctl.release_external(Function("query", [Number(step - 1)]))
+                parts.append(("step", [Number(step)]))
+            else:
+                parts.append(("base", []))
+            ctl.ground(parts)
+            ctl.assign_external(Function("query", [Number(step)]), True)
+            with ctl.solve(yield_=True) as handle:
+                ret = handle.get()
+                step += 1
+                if ret.satisfiable:
+                    *_, optimal_model = handle
+                    for atom in optimal_model.symbols(shown=True):
+                        if atom.name == 'occurs':
+                            self.plans[atom.arguments[0].number]['occurs'].append(atom)
+                        elif atom.name == 'goalReached':
+                            agt : int = atom.arguments[0].number 
+                            self.plans[agt]['cost'] = atom.arguments[1].number - old_costs[agt]
+                            self.plans[agt]['positions'].append(atom)
+                        else:
+                            self.plans[atom.arguments[0].number]['positions'].append(atom)
+                        
+        return ret.satisfiable
+        
+
+    def low_level_sa(self,agent : int, horizon : int) -> bool:
 
         old_cost : int = 0
         agent_cost : int
@@ -139,8 +201,8 @@ class CTNode:
         ctl.load(VALIADTION_FILE)
 
         with ctl.backend() as backend:
-            for instance in self.plans.values():
-                for atom in instance['positions']:
+            for plan in self.plans.values():
+                for atom in plan['positions']:
                     fact = backend.add_atom(atom)
                     backend.add_rule([fact])
 
@@ -154,8 +216,8 @@ class CTNode:
 
         logger.debug("branch invoked")
 
-        node1 : CTNode = CTNode(deepcopy(self.plans),copy(self.constraints),self.atoms,self.cost)
-        node2 : CTNode = CTNode(deepcopy(self.plans),copy(self.constraints),self.atoms,self.cost)
+        node1 : CTNode = CTNode(deepcopy(self.plans),copy(self.constraints),deepcopy(self.conflic_matrix),self.atoms,self.cost)
+        node2 : CTNode = CTNode(deepcopy(self.plans),copy(self.constraints),deepcopy(self.conflic_matrix),self.atoms,self.cost)
 
         conflict_type : str = conflict.arguments[0].name
         agent1 : Number = conflict.arguments[1]
@@ -180,12 +242,86 @@ class CTNode:
 
         return node1, node2
 
-class CBS_Solver:
+class ConflictMatrix:
 
-    def __init__(self, instance_file : str, greedy : bool = False, log_level : int = logging.INFO):
+    def __init__(self, agents : List[Union[int,Tuple[int,...]]]) -> None:
+        self.meta_agents = agents.copy()
+        self.conflict_matrix : List[int] = [0] * int(len(self.meta_agents)*(len(self.meta_agents)-1) / 2)
+
+    def is_meta_agent(self,agent : int) -> bool:
+        return type(self.meta_agents[agent-1]) == tuple
+
+    def merge(self, agent1 : int, agent2 : int) -> None:
+
+        if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents):
+
+            if agent1 > agent2:
+                temp : int = agent1
+                agent1 = agent2
+                agent2 = temp
+
+            agent1_t : Tuple[int,...] = self.meta_agents[agent1-1] if self.is_meta_agent(agent1) else (agent1,)
+            agent2_t : Tuple[int,...] = self.meta_agents[agent2-1] if self.is_meta_agent(agent2) else (agent2,)
+            new_agent : Tuple[int,...] = agent1_t + agent2_t
+            self.meta_agents[agent1-1] = new_agent
+            self.meta_agents[agent2-1] = new_agent
+
+    def update(self, agent1 : int, agent2: int) -> None:
+        if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
+            if agent1 > agent2:
+                temp : int = agent1
+                agent1 = agent2
+                agent2 = temp
+            self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
+
+    def should_merge(self,agent1 : int, agent2 : int, cthreshold : int) -> bool:
+        return self._conflict_count(agent1,agent2) >= cthreshold
+
+    def _get_ccount(self,agent1 : int, agent2 : int) -> int:
+        return self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)]
+
+    def _conflict_count(self, agent1 : int,agent2 : int) -> int:
+        if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
+            if agent1 > agent2:
+                temp : int = agent1
+                agent1 = agent2
+                agent2 = temp
+            total_conflicts : int = 0
+            self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
+            
+            if self.is_meta_agent(agent1) and self.is_meta_agent(agent2):
+                for a1 in self.meta_agents[agent1-1]:
+                    for a2 in self.meta_agents[agent2-1]:
+                        total_conflicts += self._get_ccount(a1,a2)
+            
+            if self.is_meta_agent(agent1):
+                for agent in self.meta_agents[agent1-1]:
+                    total_conflicts += self._get_ccount(agent,agent2)
+
+            if self.is_meta_agent(agent2):
+                for agent in self.meta_agents[agent2-1]:
+                    total_conflicts += self._get_ccount(agent,agent1)
+            
+            else:
+                total_conflicts += self._get_ccount(agent1,agent2)
+
+            return total_conflicts
+                      
+        else: 
+            return 0
+
+        
+
+
+class CBSSolver:
+
+    def __init__(self, instance_file : str, greedy : bool = False,meta : bool = True, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
         self.greedy = greedy
+        self.meta = meta
         self.solution = Solution()
+        self.meta_agents : List[Union[int,Tuple[int]]] = []
+        self.conflict_matrix : List[List[int]] = []
         logger.setLevel(log_level)
 
     def preprocessing(self) -> None:
@@ -198,7 +334,7 @@ class CBS_Solver:
                 elif(atom.name == 'numOfRobots'):
                     solution.agents = list(range(1,atom.arguments[0].number+1))
                 elif(atom.name == 'numOfNodes'):
-                    solution.max_horizon = atom.arguments[0].number
+                    solution.num_of_nodes = atom.arguments[0].number
                 else:
                     solution.instance_atoms.append(atom)
 
@@ -221,6 +357,8 @@ class CBS_Solver:
 
         open_queue : List[CTNode] = []
         solution_nodes : List[CTNode] = []
+        conflict_matrix : Union[ConflictMatrix,None] = None
+        max_iter : int 
         root : CTNode
         current : CTNode
 
@@ -232,18 +370,21 @@ class CBS_Solver:
             
             self.preprocessing()
 
-            self.solution.max_horizon *=2 
+            if self.meta:
+                conflict_matrix = ConflictMatrix(self.solution.agents)
 
-            root = CTNode(None,None,self.solution.instance_atoms)
+            max_iter = self.solution.num_of_nodes * 2 
+
+            root = CTNode(None,None,conflict_matrix,self.solution.instance_atoms)
 
             logger.debug("Initializing first node")
 
             for agent in self.solution.agents:
-                root.low_level(agent,self.solution.max_horizon)
+                root.low_level(agent,max_iter)
 
             if(root.cost == inf):
                 logger.info("No initial solution found!")
-                exit()
+                return self.solution
                     
             open_queue.append(root)
 
@@ -253,16 +394,34 @@ class CBS_Solver:
 
                 current = open_queue.pop(0)
 
-                first_conflict = current.validate_plans()
+                first_conflict : Union[Symbol,bool] = current.validate_plans()
 
                 if first_conflict:
-                    node1, node2 = current.branch(first_conflict,self.solution.max_horizon)
-                    if self.greedy:
-                        if node1.cost < inf : open_queue.insert(0,node1)
-                        if node2.cost < inf : open_queue.insert(0,node2)
-                    else:
-                        if node1.cost < inf : insort(open_queue,node1)
-                        if node2.cost < inf : insort(open_queue,node2)
+
+                    branch : bool = True
+
+                    if self.meta:
+                        agent1 : int = first_conflict.arguments[1].number
+                        agent2 : int = first_conflict.arguments[2].number
+
+                        if current.conflic_matrix.should_merge(agent1,agent2,META_AGENT_THRESHOLD):
+                            logger.debug(f"Merged Agents {agent1} and {agent2}")
+                            branch = False
+                            current.conflic_matrix.merge(agent1,agent2)
+                            current.low_level(agent1, max_iter)
+                            if self.greedy:
+                                if current.cost < inf : open_queue.insert(0,current)
+                            else:
+                                if current.cost < inf : insort(open_queue,current)
+
+                    if branch:
+                        node1, node2 = current.branch(first_conflict,max_iter)
+                        if self.greedy:
+                            if node1.cost < inf : open_queue.insert(0,node1)
+                            if node2.cost < inf : open_queue.insert(0,node2)
+                        else:
+                            if node1.cost < inf : insort(open_queue,node1)
+                            if node2.cost < inf : insort(open_queue,node2)
                         
                 else:
                     solution_nodes.append(current)
@@ -302,7 +461,7 @@ if __name__ == '__main__':
     parser.add_argument("--debug", default=False, action="store_true")
     args : Namespace = parser.parse_args()
 
-    solution =  CBS_Solver(args.instance,args.greedy,logging.DEBUG if args.debug else logging.INFO).solve()
+    solution =  CBSSolver(args.instance,args.greedy,logging.DEBUG if args.debug else logging.INFO).solve()
 
     if solution.satisfied:
         solution.save('plan.lp')
