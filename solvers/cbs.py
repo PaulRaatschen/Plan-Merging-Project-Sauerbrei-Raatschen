@@ -128,13 +128,11 @@ class CTNode:
                     for atom in optimal_model.symbols(shown=True):
                         if atom.name == 'occurs':
                             self.plans[atom.arguments[0].arguments[1].number]['occurs'].append(atom)
-                        elif atom.name == 'goalReached':
-                            agt : int = atom.arguments[0].number 
-                            self.plans[agt]['cost'] = atom.arguments[1].number
-                            cost += atom.arguments[1].number
-                            self.plans[agt]['positions'].append(atom)
-                        else:
+                        elif atom.name == 'position':
                             self.plans[atom.arguments[0].number]['positions'].append(atom)
+                        else:
+                            cost += atom.arguments[1].number
+                            self.plans[atom.arguments[0].number]['cost'] = atom.arguments[1].number
         self.cost += cost
 
         logger.debug(f"low level search terminated for meta agent {meta_agent} with joint cost {cost}")

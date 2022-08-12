@@ -34,9 +34,11 @@ position(r,C,t) :- position(r,C,t-1), not move(r,_,t).
 
 goalReached(r,t) :- goal(r,C), position(r,C,t).
 
+
+
 :- not goalReached(r,t), query(t).
 
 #show.
-#show position/3.
-#show goalReached/2.
+#show position(R,C,T) : r = R, position(R,C,T).
+#show goalReached(R,T) : r = R, goalReached(R,T).
 #show occurs(object(robot,R), action(move,D),T) : move(R,D,T).
