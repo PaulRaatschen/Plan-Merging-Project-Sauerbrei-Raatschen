@@ -33,6 +33,6 @@ goalReached(R,t) :- goal(R,C), position(R,C,t), planning(R).
 :- not goalReached(R,t), planning(R), query(t).
 
 #show.
-#show planning/1.
+#show goalReached/2.
 #show position/3.
 #show occurs(object(robot,R), action(move,D),T) : move(R,D,T).

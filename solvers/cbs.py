@@ -83,19 +83,19 @@ class CTNode:
 
     def low_level_ma(self,agent : int, horizon : int) -> bool:
         meta_agent : Tuple[int] = self.conflic_matrix.meta_agents[agent-1]
-        old_costs : List[int] = [0] * len(meta_agent)
         ctl : Control = Control(['-Wnone'])
         step : int = 0 
+        cost : int = 0
         ret : SolveResult = None
         handle : SolveHandle = None
         optimal_model : Model = None
 
         logger.debug(f"low level search invoked for meta agent {meta_agent}")
 
-        for index, agt in enumerate(meta_agent):
+        for agt in meta_agent:
             if agt in self.plans:
-                old_costs[index] = self.plans[agent]['cost']
-            self.plans[agent] = {'positions' : [], 'occurs' : [], 'cost' : 0}
+                self.cost -= self.plans[agt]['cost']
+            self.plans[agt] = {'positions' : [], 'occurs' : [], 'cost' : 0}
 
         ctl.load(MAPF_FILE)
 
@@ -130,12 +130,14 @@ class CTNode:
                             self.plans[atom.arguments[0].arguments[1].number]['occurs'].append(atom)
                         elif atom.name == 'goalReached':
                             agt : int = atom.arguments[0].number 
-                            self.plans[agt]['cost'] = atom.arguments[1].number - old_costs[agt]
+                            self.plans[agt]['cost'] = atom.arguments[1].number
+                            cost += atom.arguments[1].number
                             self.plans[agt]['positions'].append(atom)
                         else:
                             self.plans[atom.arguments[0].number]['positions'].append(atom)
+        self.cost += cost
 
-        logger.debug(f"low level search terminated for meta agent {meta_agent}")
+        logger.debug(f"low level search terminated for meta agent {meta_agent} with joint cost {cost}")
                         
         return ret.satisfiable
         
@@ -271,8 +273,9 @@ class ConflictMatrix:
             agent1_t : Tuple[int,...] = self.meta_agents[agent1-1] if self.is_meta_agent(agent1) else (agent1,)
             agent2_t : Tuple[int,...] = self.meta_agents[agent2-1] if self.is_meta_agent(agent2) else (agent2,)
             new_agent : Tuple[int,...] = agent1_t + agent2_t
-            self.meta_agents[agent1-1] = new_agent
-            self.meta_agents[agent2-1] = new_agent
+            for agent in new_agent:
+                self.meta_agents[agent-1] = new_agent
+            
 
     def update(self, agent1 : int, agent2: int) -> None:
         if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
@@ -365,7 +368,6 @@ class CBSSolver:
 
         open_queue : List[CTNode] = []
         solution_nodes : List[CTNode] = []
-        conflict_matrix : Union[ConflictMatrix,None] = None
         max_iter : int 
         root : CTNode
         current : CTNode
@@ -378,12 +380,12 @@ class CBSSolver:
             
             self.preprocessing()
 
-            if self.meta:
-                conflict_matrix = ConflictMatrix(self.solution.agents)
-
             max_iter = self.solution.num_of_nodes * 2 
 
-            root = CTNode(None,None,conflict_matrix,self.solution.instance_atoms)
+            root = CTNode(atoms=self.solution.instance_atoms)
+
+            if self.meta:
+                root.conflic_matrix = ConflictMatrix(self.solution.agents)
 
             logger.debug("Initializing first node")
 
@@ -413,7 +415,7 @@ class CBSSolver:
                         agent2 : int = first_conflict.arguments[2].number
 
                         if current.conflic_matrix.should_merge(agent1,agent2,META_AGENT_THRESHOLD):
-                            logger.debug(f"Merged Agents {agent1} and {agent2}")
+                            logger.debug(f"Merged Agents {current.conflic_matrix.meta_agents[agent1-1]} and {current.conflic_matrix.meta_agents[agent2-1]}")
                             branch = False
                             current.conflic_matrix.merge(agent1,agent2)
                             current.low_level(agent1, max_iter)
