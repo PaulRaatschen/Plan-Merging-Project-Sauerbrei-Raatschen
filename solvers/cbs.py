@@ -1,18 +1,17 @@
 from __future__ import annotations
 from bisect import insort
 from typing import Dict, List, Tuple, Union
-from unicodedata import name
 from clingo import Control, Number, Function, Symbol, Model
 from clingo.solving import SolveResult, SolveHandle
 from time import perf_counter
 from os import path
 from argparse import ArgumentParser, Namespace
-from sys import exit, stdout
+from sys import stdout
 from math import inf
 import logging
-from copy import deepcopy, copy
-from solution import Solution
-from math import ceil
+from copy import deepcopy
+from solution import Solution, Plan
+
 
 """Logging setup"""
 logger = logging.getLogger(__name__)
@@ -30,8 +29,6 @@ SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
 MAPF_FILE : str = path.join(ENCODING_DIR,'multiAgentPF_inc.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
 
-META_AGENT_THRESHOLD : int = 2
-
 class CTNode:
     """
     CTNode class represents a node in the constraint tree of the conflict based search algorithm.
@@ -44,18 +41,18 @@ class CTNode:
         branch(self,conflict : Symbol) -> Tuple[CTNode,CTNode]    
     """
 
-    def __init__(self,plans : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]=None, constraints : List[Symbol]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0) -> None:
+    def __init__(self,plans : Dict[int,Plan]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0, constraint_count : int = 0) -> None:
         self.plans = plans if plans else {}
-        self.constraints = constraints if constraints else []
         self.conflic_matrix = conflict_matrix
         self.atoms = atoms
         self.cost = cost
+        self.constraint_count = constraint_count
 
     def __gt__(self, other : CTNode) -> bool:
         if self.cost > other.cost:
             return True 
         elif self.cost == other.cost:
-            return len(self.constraints) > len(other.constraints)
+            return self.constraint_count > other.constraint_count
         else:
             return False
 
@@ -63,7 +60,7 @@ class CTNode:
         if self.cost > other.cost:
             return True 
         elif self.cost == other.cost:
-            return len(self.constraints) >= len(other.constraints)
+            return self.constraint_count >= other.constraint_count
         else:
             return False
 
@@ -93,20 +90,20 @@ class CTNode:
         logger.debug(f"low level search invoked for meta agent {meta_agent}")
 
         for agt in meta_agent:
-            if agt in self.plans:
-                self.cost -= self.plans[agt]['cost']
-            self.plans[agt] = {'positions' : [], 'occurs' : [], 'cost' : 0}
+            self.cost -= self.plans[agt].cost
+            self.plans[agt].clear()
 
         ctl.load(MAPF_FILE)
 
         with ctl.backend() as backend:
-            for atom in self.atoms + self.constraints:
+            for atom in self.atoms:
                 fact = backend.add_atom(atom)
                 backend.add_rule([fact])
 
             for agt in meta_agent:
-                fact = backend.add_atom(Function(name='planning',arguments=[Number(agt)]))
-                backend.add_rule([fact])
+                for constraint in self.plans[agt].constraints + [Function(name='planning',arguments=[Number(agt)]), self.plans[agt].goal]:
+                    fact = backend.add_atom(constraint)
+                    backend.add_rule([fact])
 
         while ((step < horizon) and (ret is None or (not ret.satisfiable))):
             parts : List[Tuple[str,List[Symbol]]] = []
@@ -127,12 +124,12 @@ class CTNode:
                         pass
                     for atom in optimal_model.symbols(shown=True):
                         if atom.name == 'occurs':
-                            self.plans[atom.arguments[0].arguments[1].number]['occurs'].append(atom)                          
+                            self.plans[atom.arguments[0].arguments[1].number].occurs.append(atom)                          
                         else:
-                            self.plans[atom.arguments[0].number]['positions'].append(atom)
+                            self.plans[atom.arguments[0].number].positions.append(atom)
                             if atom.name == 'goalReached':
                                 cost += atom.arguments[1].number
-                                self.plans[atom.arguments[0].number]['cost'] = atom.arguments[1].number
+                                self.plans[atom.arguments[0].number].cost = atom.arguments[1].number
 
         self.cost += cost
 
@@ -143,32 +140,33 @@ class CTNode:
 
     def low_level_sa(self,agent : int, horizon : int) -> bool:
 
-        old_cost : int = 0
-        agent_cost : int
         ctl : Control = Control(['-Wnone',f'-c r={agent}'])
         step : int = 0 
         ret : SolveResult = None
+        plan : Plan = self.plans[agent]
+        cost : int = 0
 
-        def low_level_parser(model : Model, agent : int, plans : Dict[int,Dict[str,Union[List[Symbol],List[Symbol],int]]]) -> bool:
+        def low_level_parser(model : Model, agent : int) -> bool:
             for atom in model.symbols(shown=True):
-                if(atom.name == 'occurs'):
-                    plans[agent]['occurs'].append(atom)
+                if atom.name == 'occurs':
+                    self.plans[agent].occurs.append(atom)
                 else:
-                    plans[agent]['positions'].append(atom)
+                    self.plans[agent].positions.append(atom)
         
         logger.debug(f"low level search invoked for agent {agent}")
 
-        if agent in self.plans:
-            old_cost = self.plans[agent]['cost']
+        self.cost -= plan.cost
 
-        self.plans[agent] = {'positions' : [], 'occurs' : [], 'cost' : 0}
+        plan.clear
 
         ctl.load(SAPF_FILE)
 
         with ctl.backend() as backend:
-            for atom in self.atoms + self.constraints:
+            for atom in self.atoms + plan.constraints + [plan.goal]:
                 fact = backend.add_atom(atom)
                 backend.add_rule([fact])
+        
+            
 
         while ((step < horizon) and (ret is None or (not ret.satisfiable))):
                     parts : List[Tuple[str,List[Symbol]]] = []
@@ -180,17 +178,17 @@ class CTNode:
                         parts.append(("base", []))
                     ctl.ground(parts)
                     ctl.assign_external(Function("query", [Number(step)]), True)
-                    ret, step = ctl.solve(on_model=lambda model : low_level_parser(model,agent,self.plans)), step + 1
+                    ret, step = ctl.solve(on_model=lambda model : low_level_parser(model,agent)), step + 1
                     
-        agent_cost = inf if (ret and (not ret.satisfiable)) else step - 1
+        cost = inf if (ret and (not ret.satisfiable)) else step - 1
 
-        self.plans[agent]['cost'] = agent_cost
+        self.plans[agent].cost = cost
 
-        logger.debug(f"low level search terminated for agent {agent} with cost {agent_cost}")
+        logger.debug(f"low level search terminated for agent {agent} with cost {cost}")
 
-        self.cost += (agent_cost-old_cost)
+        self.cost += cost
 
-        return agent_cost < inf
+        return plan.cost < inf
 
     def validate_plans(self) -> Union[Symbol,bool]:
 
@@ -211,13 +209,12 @@ class CTNode:
 
         with ctl.backend() as backend:
             for plan in self.plans.values():
-                for atom in plan['positions']:
+                fact = backend.add_atom(plan.goal)
+                backend.add_rule([fact])
+                for atom in plan.positions:
                     fact = backend.add_atom(atom)
                     backend.add_rule([fact])
-            for atom in self.atoms:
-                if atom.name == 'goal':
-                    fact = backend.add_atom(atom)
-                    backend.add_rule([fact])
+                    
 
         ctl.ground([('base',[])])
 
@@ -229,26 +226,31 @@ class CTNode:
 
         logger.debug("branch invoked")
 
-        node1 : CTNode = CTNode(deepcopy(self.plans),copy(self.constraints),deepcopy(self.conflic_matrix),self.atoms,self.cost)
-        node2 : CTNode = CTNode(deepcopy(self.plans),copy(self.constraints),deepcopy(self.conflic_matrix),self.atoms,self.cost)
+        node1 : CTNode = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,self.cost,self.constraint_count+1)
+        node2 : CTNode = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,self.cost,self.constraint_count+1)
 
+        constraint_type : List[str,str] = ["constraint","constraint"]
         conflict_type : str = conflict.arguments[0].name
         agent1 : Number = conflict.arguments[1]
         agent2 : Number  = conflict.arguments[2]
         time : Number = conflict.arguments[4]
 
-        if(conflict_type == 'vertex'):
+        if self.conflic_matrix:
+            constraint_type[0] = "meta_constraint" if self.conflic_matrix.is_meta_agent(agent1.number) else "constraint"
+            constraint_type[1] = "meta_constraint" if self.conflic_matrix.is_meta_agent(agent2.number) else "constraint"
+
+        if conflict_type == 'vertex':
             loc : Function = conflict.arguments[3]
-            node1.constraints.append(Function(name="constraint", arguments=[agent1,loc,time]))
-            node2.constraints.append(Function(name="constraint", arguments=[agent2,loc,time]))
+            node1.plans[agent1.number].constraints.append(Function(name=constraint_type[0], arguments=[agent1,loc,time]))
+            node1.plans[agent2.number].constraints.append(Function(name=constraint_type[1], arguments=[agent2,loc,time]))
 
         else:
             loc1 : Function = conflict.arguments[3].arguments[0]
             loc2 : Function = conflict.arguments[3].arguments[1]
             move1 : Function = Function('',[Number(loc2.arguments[0].number-loc1.arguments[0].number),Number(loc2.arguments[1].number-loc1.arguments[1].number)],True)
             move2 : Function = Function('',[Number(loc1.arguments[0].number-loc2.arguments[0].number),Number(loc1.arguments[1].number-loc2.arguments[1].number)],True)
-            node1.constraints.append(Function(name="constraint", arguments=[agent1,loc1,move1,time]))
-            node2.constraints.append(Function(name="constraint", arguments=[agent2,loc2,move2,time]))
+            node1.plans[agent1.number].constraints.append(Function(name=constraint_type[0], arguments=[agent1,loc1,move1,time]))
+            node2.plans[agent2.number].constraints.append(Function(name=constraint_type[1], arguments=[agent2,loc2,move2,time]))
 
         node1.low_level(agent1.number,max_horizon)
         node2.low_level(agent2.number,max_horizon)
@@ -329,10 +331,11 @@ class ConflictMatrix:
 
 class CBSSolver:
 
-    def __init__(self, instance_file : str, greedy : bool = False,meta : bool = True, log_level : int = logging.INFO) -> None:
+    def __init__(self, instance_file : str, greedy : bool = False,meta : bool = False, meta_threshold : int = 2, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
         self.greedy = greedy
         self.meta = meta
+        self.meta_threshold = meta_threshold
         self.solution = Solution()
         self.meta_agents : List[Union[int,Tuple[int]]] = []
         self.conflict_matrix : List[List[int]] = []
@@ -340,17 +343,19 @@ class CBSSolver:
 
     def preprocessing(self) -> None:
 
-        def preprocessing_parser(model : Model, solution : Solution) -> bool:
+        def preprocessing_parser(model : Model) -> bool:
 
             for atom in model.symbols(atoms=True):
-                if(atom.name == 'init'):
-                    solution.inits.append(atom)
-                elif(atom.name == 'numOfRobots'):
-                    solution.agents = list(range(1,atom.arguments[0].number+1))
-                elif(atom.name == 'numOfNodes'):
-                    solution.num_of_nodes = atom.arguments[0].number
+                if atom.name == 'init':
+                    self.solution.inits.append(atom)
+                elif atom.name == 'numOfRobots':
+                    self.solution.agents = list(range(1,atom.arguments[0].number+1))
+                elif atom.name == 'numOfNodes':
+                    self.solution.num_of_nodes = atom.arguments[0].number
+                elif atom.name == 'goal':
+                    self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
                 else:
-                    solution.instance_atoms.append(atom)
+                    self.solution.instance_atoms.append(atom)
 
             return False
 
@@ -364,7 +369,7 @@ class CBSSolver:
 
         ctl.ground([("base",[])])
 
-        ctl.solve(on_model=lambda model : preprocessing_parser(model,self.solution))
+        ctl.solve(on_model=preprocessing_parser)
 
 
     def solve(self) -> Solution:
@@ -385,7 +390,7 @@ class CBSSolver:
 
             max_iter = self.solution.num_of_nodes * 2 
 
-            root = CTNode(atoms=self.solution.instance_atoms)
+            root = CTNode(atoms=self.solution.instance_atoms,plans=self.solution.plans)
 
             if self.meta:
                 root.conflic_matrix = ConflictMatrix(self.solution.agents)
@@ -417,7 +422,7 @@ class CBSSolver:
                         agent1 : int = first_conflict.arguments[1].number
                         agent2 : int = first_conflict.arguments[2].number
 
-                        if current.conflic_matrix.should_merge(agent1,agent2,META_AGENT_THRESHOLD):
+                        if current.conflic_matrix.should_merge(agent1,agent2,self.meta_threshold):
                             logger.debug(f"Merged Agents {current.conflic_matrix.meta_agents[agent1-1]} and {current.conflic_matrix.meta_agents[agent2-1]}")
                             branch = False
                             current.conflic_matrix.merge(agent1,agent2)
@@ -471,10 +476,12 @@ if __name__ == '__main__':
     parser.add_argument("instance", type=str)
     parser.add_argument("-b", "--benchmark", default=False, action="store_true")
     parser.add_argument("-g", "--greedy", default=False, action="store_true")
+    parser.add_argument("-m", "--meta", default=False, action="store_true")
     parser.add_argument("--debug", default=False, action="store_true")
+    parser.add_argument("--treshold",default=2,type=int)
     args : Namespace = parser.parse_args()
 
-    solution =  CBSSolver(args.instance,args.greedy,logging.DEBUG if args.debug else logging.INFO).solve()
+    solution =  CBSSolver(args.instance,args.greedy,args.meta, args.threshold,logging.DEBUG if args.debug else logging.INFO).solve()
 
     if solution.satisfied:
         solution.save('plan.lp')

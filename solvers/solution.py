@@ -10,14 +10,28 @@ WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
 
+class Plan: 
+
+    def __init__(self,occurs : List[Symbol] = None, positions : List[Symbol] = None, constraints : List[Symbol] = None, cost : int = 0, goal : Symbol = None):
+        self.occurs = occurs if occurs else []
+        self.positions = positions if positions else []
+        self.constraints = constraints if constraints else []
+        self.cost = cost
+        self.goal = goal
+
+    def clear(self):
+        self.occurs = []
+        self.positions = []
+        self.cost = 0
+
 class Solution:
 
-    def __init__(self,agents : List[int] = None,inits : List[Symbol] = None, instance_atoms : List[Symbol] = None, plans : Dict[int,Dict[str,Union[List[Symbol],int]]] = None, num_of_nodes : int = 0):
+    def __init__(self,agents : List[int] = None,inits : List[Symbol] = None, instance_atoms : List[Symbol] = None, plans : Dict[int,Plan] = None, num_of_nodes : int = 0):
         self.agents = agents if agents else []
         self.inits = inits if inits else []
         self.instance_atoms = instance_atoms if instance_atoms else []
         self.plans = plans if plans else {}
-        self.initial_plans = {}
+        self.initial_plans : Dict[int,Plan] = {}
         self.num_of_nodes = num_of_nodes
         self.makespan : int = 0
         self.cost : int = 0
@@ -25,52 +39,54 @@ class Solution:
         self.satisfied : bool = False
 
     def clear_plans(self) -> None:
-        for agent in self.agents:
-            self.clear_plan(agent)
+        for plan in self.plans.values():
+            plan.clear()
 
 
     def clear_plan(self,agent : int) -> None:
-        if agent in self.plans:
-            self.plans[agent] = {'occurs' : [],'positions' : [], 'cost' : inf}
+        self.plans[agent].clear()
+
 
     def save(self, filepath : str):
         with open(filepath, 'w', encoding='utf-8') as file:
             for init in self.inits:
                 file.write(f"{init}. ")
             for plan in self.plans.values():
-                for occur in plan['occurs']:
+                for occur in plan.occurs:
                     file.write(f"{occur}. ")
 
 
-    def get_initial_plans(self) -> Dict[int,List[Symbol]]:
+    def get_initial_plans(self) -> List[Plan]:
         ctl : Control
 
         def model_parser(model : Model,agent : int) -> bool:
             for atom in model.symbols(shown=True):
                 if atom.name == 'occurs':
-                    self.initial_plans[agent]['occurs'].append(atom)
+                    self.initial_plans[agent].occurs.append(atom)
                 elif atom.name == 'position' and atom.arguments[0].number == agent:
-                    self.initial_plans[agent]['positions'].append(atom)
+                    self.initial_plans[agent].positions.append(atom)
             return False
 
         if not self.initial_plans:
             for agent in self.agents:
-                self.initial_plans[agent] = {'occurs' : [], 'positions' : [], 'cost' : 0}
+                self.initial_plans[agent] = Plan(goal=self.plans[agent].goal)
                 ctl = Control(arguments=['-Wnone',f'-c r={agent}']) 
                 ctl.load(SAPF_FILE)
 
                 with ctl.backend() as backend:
+                    fact = backend.add_atom(self.initial_plans[agent].goal)
+                    backend.add_rule([fact])
                     for atom in self.instance_atoms:
                         fact = backend.add_atom(atom)
                         backend.add_rule([fact])
                     
-                self.initial_plans[agent]['cost'] = self.incremental_solving(ctl,self.num_of_nodes,lambda m, a=agent : model_parser(m,a))
+                self.initial_plans[agent].cost = self.incremental_solving(ctl,self.num_of_nodes,lambda m, a=agent : model_parser(m,a))
 
         return self.initial_plans
         
 
-    def get_initial_plan_info(self) -> Dict[str,Union[Dict[int,List[Symbol]],int]]:
-        result : Dict[str,Dict[int,List[Symbol]],int,int] = { 'plans' : dict.fromkeys(self.agents,None), 'soc': 0, 'makespan' : 0 }
+    def get_initial_plan_info(self) -> Dict[str,Union[List[Plan],int]]:
+        result : Dict[str,Union[List[Plan],int]] = { 'plans' : {}, 'soc': 0, 'makespan' : 0 }
         soc : int = 0
         makespan : int = 0
 
@@ -80,8 +96,8 @@ class Solution:
         result['plans'] = self.initial_plans
 
         for plan in self.initial_plans.values():
-            soc += plan['cost']
-            makespan = max(makespan,plan['cost'])
+            soc += plan.cost
+            makespan = max(makespan,plan.cost)
 
         result['soc'] = soc
         result['makespan'] = makespan
@@ -94,7 +110,7 @@ class Solution:
         else:
             cost : int = 0
             for plan in self.plans.values():
-                cost += plan['cost']
+                cost += plan.cost
             return cost
 
 
@@ -102,7 +118,7 @@ class Solution:
 
         if self.makespan == 0:
             for plan in self.plans.values():
-                self.makespan = max(self.makespan,plan['cost'])
+                self.makespan = max(self.makespan,plan.cost)
 
         return self.makespan
 
@@ -110,28 +126,28 @@ class Solution:
         total_moves : int = 0
 
         for plan in self.plans.values():
-            total_moves += len(plan['occurs'])
+            total_moves += len(plan.occurs)
 
         return total_moves
 
     def get_norm_total_moves(self) -> float:
-        if not self.initial_plans:
+        if not self.initial_plans.values():
             self.get_initial_plans()
         
         total : int = 0
 
         for plan in self.initial_plans.values():
-            total += len(plan['occurs'])
+            total += len(plan.occurs)
 
         return self.get_total_moves() / total
 
     def get_norm_soc(self) -> float:
-        info : Dict[str,Dict[int,List[Symbol]],int,int] = self.get_initial_plan_info()
+        info : Dict[str,Union[List[Plan],int]] = self.get_initial_plan_info()
 
         return self.get_soc() / info['soc']
 
     def get_norm_makespan(self) -> float:
-        info : Dict[str,Dict[int,List[Symbol]],int,int] = self.get_initial_plan_info()
+        info : Dict[str,Union[List[Plan],int]] = self.get_initial_plan_info()
 
         return self.get_makespan() / info['makespan']
     
@@ -145,7 +161,7 @@ class Solution:
 
         with open(filepath,'w',encoding='utf-8') as file:
                 for plan in self.initial_plans.values():
-                    for atom in plan['occurs']:
+                    for atom in plan.occurs:
                         file.write(f'{atom}.\n')
         
     @staticmethod   

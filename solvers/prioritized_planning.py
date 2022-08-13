@@ -1,13 +1,13 @@
 from __future__ import annotations
 from ctypes import Union
-from typing import Callable, List, Set, Tuple
+from typing import Callable, List, Tuple
 from clingo import Control, Number, Function, Symbol, Model
 from time import perf_counter
 from math import inf
 from os import path
 from argparse import ArgumentParser, Namespace
 from sys import stdout
-from solution import Solution
+from solution import Solution, Plan
 import permutation_tools as pt
 import logging
 
@@ -43,19 +43,20 @@ class PrioritizedPlanningSolver():
 
     def preprocessing(self) -> None:
 
-        self.solution = Solution()
 
-        def preprocessing_parser(model : Model, solution : Solution) -> bool:
+        def preprocessing_parser(model : Model) -> bool:
 
             for atom in model.symbols(atoms=True):
-                if(atom.name == 'init'):
-                    solution.inits.append(atom)
-                elif(atom.name == 'numOfRobots'):
-                    solution.agents = list(range(1,atom.arguments[0].number+1))
-                elif(atom.name == 'numOfNodes'):
-                    solution.num_of_nodes = atom.arguments[0].number
+                if atom.name == 'init':
+                    self.solution.inits.append(atom)
+                elif atom.name == 'numOfRobots':
+                    self.solution.agents = list(range(1,atom.arguments[0].number+1))
+                elif atom.name == 'numOfNodes':
+                    self.solution.num_of_nodes = atom.arguments[0].number
+                elif atom.name == 'goal':
+                    self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
                 else:
-                    solution.instance_atoms.append(atom)
+                    self.solution.instance_atoms.append(atom)
 
             return False
 
@@ -69,7 +70,7 @@ class PrioritizedPlanningSolver():
 
         ctl.ground([("base",[])])
 
-        ctl.solve(on_model=lambda model : preprocessing_parser(model,self.solution))
+        ctl.solve(on_model=preprocessing_parser)
 
 
     def optimize_schedule(self) -> List[int]:
@@ -113,8 +114,8 @@ class PrioritizedPlanningSolver():
         ctl.load(CONFLICT_DETECTION_FILE)
 
         with ctl.backend() as backend:
-            for plan in self.solution.plans:
-                for position in plan['position']:
+            for position in positions:
+                if atom.name == 'position':
                     fact = backend.add_atom(position)
                     backend.add_rule([fact])
 
@@ -127,23 +128,18 @@ class PrioritizedPlanningSolver():
     def plan_path(self, agent : int) -> bool:
 
         ctl : Control
-        cost : int
+        cost : int = 0
         max_iter : int = self.solution.num_of_nodes * 2
-
-        if agent in self.solution.plans:
-            old_cost = self.solution.plans[agent]['cost'] 
+  
+        def plan_path_parser(model : Model, agent : int) -> bool:
+            for atom in model.symbols(shown=True):
+                    if atom.name == 'occurs':
+                        self.solution.plans[agent].occurs.append(atom)
+                    else:
+                        self.solution.plans[agent].positions.append(atom)
+            return False
 
         logger.debug(f'Planning for agent {agent}')
-
-        self.solution.plans[agent] = {'occurs' : [],'positions' : [], 'cost' : inf}
-
-        def plan_path_parser(model : Model, agent : int, solution : Solution) -> bool:
-            for atom in model.symbols(shown=True):
-                    if(atom.name == 'occurs'):
-                        solution.plans[agent]['occurs'].append(atom)
-                    else:
-                        solution.plans[agent]['positions'].append(atom)
-            return False
 
         ctl = Control(arguments=['-Wnone',f'-c r={agent}'])
 
@@ -155,13 +151,13 @@ class PrioritizedPlanningSolver():
                 backend.add_rule([fact])
 
             for plan in self.solution.plans.values():
-                for position in plan['positions']:
-                    fact = backend.add_atom(position)
+                for atom in plan.positions + [plan.goal]:
+                    fact = backend.add_atom(atom)
                     backend.add_rule([fact])
 
-        cost = self.incremental_solving(ctl,max_iter,lambda model : plan_path_parser(model,agent,self.solution))
+        cost = self.incremental_solving(ctl,max_iter,lambda model : plan_path_parser(model,agent))
 
-        self.solution.plans[agent]['cost'] = cost
+        self.solution.plans[agent].cost = cost
 
         logger.debug(f'Planning finished with cost {cost}')
 
@@ -286,5 +282,5 @@ if __name__ == "__main__":
 
     if args.benchmark:
             logger.info(f'Execution time : {solution.execution_time:.2f}s')
-            logger.info(f'Total model cost : {solution.cost}')
+            logger.info(f'Total model cost : {solution.get_soc()}')
     

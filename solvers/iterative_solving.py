@@ -4,7 +4,7 @@ from clingo import Control, Model, Symbol
 from time import perf_counter
 from typing import List
 from os import path 
-from solution import Solution
+from solution import Solution, Plan
 from argparse import ArgumentParser, Namespace
 import logging
 
@@ -13,7 +13,6 @@ WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE = path.join(ENCODING_DIR,'setup.lp')
 POSTPROCESSING_FILE = path.join(ENCODING_DIR,'position_to_occurs.lp')
-SAPF_FILE = path.join(ENCODING_DIR,'singleAgentPF.lp')
 SOLVE_VERTEX_CL_FILE = path.join(ENCODING_DIR,'solve_vertex_cl.lp')
 SOLVE_EDGE_CL_FILE = path.join(ENCODING_DIR,'solve_edge_cl.lp')
 CONFLICT_DETECTION_FILE = path.join(ENCODING_DIR,'conflict_detection.lp')
@@ -47,12 +46,14 @@ class IterativeSolver:
         def preprocessing_parser(model : Model) -> bool:
 
             for atom in model.symbols(shown=True):
-                if(atom.name == 'init'):
+                if atom.name == 'init':
                     self.solution.inits.append(atom)
-                elif(atom.name == 'numOfRobots'):
+                elif atom.name == 'numOfRobots':
                     self.solution.agents = list(range(1,atom.arguments[0].number+1))
-                elif(atom.name == 'numOfNodes'):
+                elif atom.name == 'numOfNodes':
                     self.solution.num_of_nodes = atom.arguments[0].number
+                elif atom.name == 'goal':
+                    self.solution.plans[atom.arguments[0].number] = atom
                 else:
                     self.solution.instance_atoms.append(atom)
 
@@ -76,7 +77,7 @@ class IterativeSolver:
 
             for atom in model.symbols(shown=True):
                 agent : int = atom.arguments[0].arguments[1].number
-                self.solution.plans[agent]['occurs'].append(atom)
+                self.solution.plans[agent].occurs.append(atom)
 
             return False
 
@@ -88,7 +89,7 @@ class IterativeSolver:
 
         with ctl.backend() as backend:
             for plan in self.solution.plans.values():
-                for atom in plan['positions']:
+                for atom in plan.positions:
                     fact = backend.add_atom(atom)
                     backend.add_rule([fact])
 
@@ -97,10 +98,10 @@ class IterativeSolver:
         ctl.solve(on_model=postprocessing_parser)
 
         for plan in self.solution.plans.values():
-            cost : int = len(plan['positions'])-1
+            cost : int = len(plan.positions)-1
             self.solution.cost += cost
             self.solution.makespan = max(self.solution.makespan,cost)
-            plan['cost'] = cost
+            plan.cost = cost
 
         self.solution.satisfied = self.conflict_step
 
@@ -144,7 +145,7 @@ class IterativeSolver:
 
                 with ctl.backend() as backend:
                     for plan in self.solution.plans.values():
-                        for atom in plan['positions']:
+                        for atom in plan.positions:
                             fact = backend.add_atom(atom)
                             backend.add_rule([fact])
 
@@ -168,7 +169,7 @@ class IterativeSolver:
                         fact = backend.add_atom(atom)
                         backend.add_rule([fact])
                     for plan in self.solution.plans.values():
-                        for atom in plan['positions']:
+                        for atom in plan.positions:
                             fact = backend.add_atom(atom)
                             backend.add_rule([fact])
                     for atom in self.conflicts:
@@ -205,7 +206,7 @@ class IterativeSolver:
 
                 with ctl.backend() as backend:
                     for plan in self.solution.plans.values():
-                        for atom in plan['positions']:
+                        for atom in plan.positions:
                             fact = backend.add_atom(atom)
                             backend.add_rule([fact])
 
@@ -232,7 +233,7 @@ class IterativeSolver:
                         fact = backend.add_atom(atom)
                         backend.add_rule([fact])
                     for plan in self.solution.plans.values():
-                        for atom in plan['positions']:
+                        for atom in plan.positions:
                             fact = backend.add_atom(atom)
                             backend.add_rule([fact])
                     for atom in self.conflicts:
@@ -267,8 +268,7 @@ class IterativeSolver:
     def model_solving_parser(self,model : Model) -> bool:
         self.solution.clear_plans()
         for atom in model.symbols(shown=True):
-            agent : int = atom.arguments[0].number
-            self.solution.plans[agent]['positions'].append(atom)
+            self.solution.plans[atom.arguments[0].number].positions.append(atom)
         return False
             
 
