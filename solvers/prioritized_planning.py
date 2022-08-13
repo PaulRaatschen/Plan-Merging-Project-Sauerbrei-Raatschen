@@ -78,44 +78,28 @@ class PrioritizedPlanningSolver():
         logger.debug("Optimization invoked")
 
         ctl : Control
-        plan_lenghts : List[int] = [0] * len(self.solution.agents)
-        positions : List[Symbol] = []
         schedule : List[int] = []
 
         def optimization_parser(model : Model, schedule : List[int]) -> bool:
 
-            agent_conflicts : List[Tuple(int,int)] = []
+            agent_conflicts : List[List[int]] = [[agent,0,self.solution.initial_plans[agent].cost] for agent in self.solution.agents]
 
             for atom in model.symbols(shown=True):
-                agent_conflicts.append((int(atom.arguments[0])),int(atom.arguments[1]))
+                agent_conflicts[atom.arguments[1].number-1][1] += 1
 
-            if agent_conflicts:
-                schedule.extend(sorted(agent_conflicts, key=lambda item : item[1])[0])
+            schedule.extend([x[0] for x in sorted(agent_conflicts,key=lambda x : (x[1],x[2]))])
 
             return False
 
-        for agent in self.solution.agents:
-
-            ctl = Control(arguments=['-Wnone',f'-c r={agent}'])
-
-            ctl.load(SAPF_NC_FILE)
-
-            with ctl.backend() as backend:
-                for atom in self.solution.instance_atoms:
-                    fact = backend.add_atom(atom)
-                    backend.add_rule([fact])
-
-            plan_lenghts[agent-1] = self.incremental_solving(ctl,self.solution.num_of_nodes*2,lambda model : positions.extend(model.symbols(shown=True)))
-
-            logger.debug(f'Optimal Plan for agent {agent} with cost {plan_lenghts[agent-1]}')
+        self.solution.get_initial_plans()        
 
         ctl = Control(arguments=['-Wnone'])
 
         ctl.load(CONFLICT_DETECTION_FILE)
 
         with ctl.backend() as backend:
-            for position in positions:
-                if atom.name == 'position':
+            for plan in self.solution.initial_plans.values():
+                for position in plan.positions:
                     fact = backend.add_atom(position)
                     backend.add_rule([fact])
 
@@ -123,7 +107,9 @@ class PrioritizedPlanningSolver():
 
         ctl.solve(on_model=lambda model : optimization_parser(model,schedule))
 
-        return schedule
+        logger.debug(f'New Schedule: {schedule}')
+
+        return schedule if schedule else self.solution.agents.copy()
 
     def plan_path(self, agent : int) -> bool:
 
@@ -179,12 +165,9 @@ class PrioritizedPlanningSolver():
         num_of_agents : int = len(ordering)
 
         if self.optimize:
-            schedule : List[int] = self.optimize_schedule()
+            ordering = self.optimize_schedule()
+            
 
-            if schedule:
-                solution.agents = schedule
-
-            solution.clear_plans()
         
         for _ in range(self.maxdepth):
 
