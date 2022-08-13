@@ -127,12 +127,13 @@ class CTNode:
                         pass
                     for atom in optimal_model.symbols(shown=True):
                         if atom.name == 'occurs':
-                            self.plans[atom.arguments[0].arguments[1].number]['occurs'].append(atom)
-                        elif atom.name == 'position':
-                            self.plans[atom.arguments[0].number]['positions'].append(atom)
+                            self.plans[atom.arguments[0].arguments[1].number]['occurs'].append(atom)                          
                         else:
-                            cost += atom.arguments[1].number
-                            self.plans[atom.arguments[0].number]['cost'] = atom.arguments[1].number
+                            self.plans[atom.arguments[0].number]['positions'].append(atom)
+                            if atom.name == 'goalReached':
+                                cost += atom.arguments[1].number
+                                self.plans[atom.arguments[0].number]['cost'] = atom.arguments[1].number
+
         self.cost += cost
 
         logger.debug(f"low level search terminated for meta agent {meta_agent} with joint cost {cost}")
@@ -211,6 +212,10 @@ class CTNode:
         with ctl.backend() as backend:
             for plan in self.plans.values():
                 for atom in plan['positions']:
+                    fact = backend.add_atom(atom)
+                    backend.add_rule([fact])
+            for atom in self.atoms:
+                if atom.name == 'goal':
                     fact = backend.add_atom(atom)
                     backend.add_rule([fact])
 
