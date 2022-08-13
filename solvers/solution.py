@@ -8,7 +8,7 @@ from os import path
 
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
-SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
+SAPF_FILE : str = path.join(ENCODING_DIR,'single_agent_pf_nc.lp')
 
 class Plan: 
 

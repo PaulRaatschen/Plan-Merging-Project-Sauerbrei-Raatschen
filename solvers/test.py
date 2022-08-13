@@ -2,11 +2,10 @@
 from os import path
 from iterative_solving import IterativeSolver
 from prioritized_planning import PrioritizedPlanningSolver
-from solution import Solution
+from cbs import CBSSolver
+from solution import Solution, Plan
 from clingo import Symbol, Function, Control, Model, Number
 import logging
-
-from cbs import CBSSolver
 
 
 """Directorys and asp files"""
@@ -16,12 +15,7 @@ MAPF_FILE : str = path.join(WORKING_DIR,r'.\encodings\multiAgentPF_inc.lp')
 PREPROCESSING_FILE : str = path.join(WORKING_DIR,r'.\encodings\setup.lp')
 
 
-sol : Solution = CBSSolver(INSTANCE_FILE,log_level=logging.DEBUG).solve()
-
-for i in [1,2,9,10]:
-    for atom in sol.plans[i]['positions']:
-        print(f'{atom}.')
-
+sol : Solution = CBSSolver(INSTANCE_FILE,log_level=logging.DEBUG,meta=True).solve()
 
 print(sol.satisfied)
 print(f'Execution time : {sol.execution_time:.3}s\n sum of costs : {sol.get_soc()}\n normalized : {sol.get_norm_soc():.3}\n makespan: {sol.get_makespan()}\n normalized : {sol.get_norm_makespan():.3}\n total moves : {sol.get_total_moves()}\n normalized : {sol.get_norm_total_moves():.3}\n density : {sol.get_density():.3}')

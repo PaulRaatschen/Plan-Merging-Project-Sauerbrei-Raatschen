@@ -25,9 +25,9 @@ logger.addHandler(handler)
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
-SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
+SAPF_FILE : str = path.join(ENCODING_DIR,'single_agent_pf.lp')
 CONFLICT_DETECTION_FILE : str = path.join(ENCODING_DIR,'conflict_detection.lp')
-SAPF_NC_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_nc_inc.lp')
+SAPF_NC_FILE : str = path.join(ENCODING_DIR,'single_agent_pf_nc.lp')
 
 class PrioritizedPlanningSolver():
 

@@ -25,8 +25,8 @@ logger.addHandler(handler)
 WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
-SAPF_FILE : str = path.join(ENCODING_DIR,'singleAgentPF_inc.lp')
-MAPF_FILE : str = path.join(ENCODING_DIR,'multiAgentPF_inc.lp')
+SAPF_FILE : str = path.join(ENCODING_DIR,'single_agent_pf_cbs.lp')
+MAPF_FILE : str = path.join(ENCODING_DIR,'multi_agent_pf.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
 
 class CTNode:
