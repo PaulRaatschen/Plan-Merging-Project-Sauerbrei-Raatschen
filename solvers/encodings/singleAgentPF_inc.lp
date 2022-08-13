@@ -18,6 +18,7 @@ position(r,C,t) :- position(r,C,t-1), not move(r,_,t).
 
 % Avoid stationary robots
 :- position(r,(X,Y),t), goal(R,(X,Y)), goalReached(R,T), r!=R, t > T.
+block(1..T-1) :- position(R,C,T), goal(r,C), r!=R. 
 
  % CBS Constraints
 :- constraint(r,C,t), position(r,C,t).
