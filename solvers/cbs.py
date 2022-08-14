@@ -159,7 +159,7 @@ class CTNode:
 
         self.cost -= plan.cost
 
-        plan.clear
+        plan.clear()
 
         ctl.load(SAPF_FILE)
 
