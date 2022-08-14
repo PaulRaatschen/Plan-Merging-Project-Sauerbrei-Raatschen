@@ -1,7 +1,7 @@
 from __future__ import annotations
 from bisect import insort
 from typing import Dict, List, Tuple, Union
-from clingo import Control, Number, Function, Symbol, Model
+from clingo import Control, Number, Function, Symbol, Model, Supremum
 from clingo.solving import SolveResult, SolveHandle
 from time import perf_counter
 from os import path
@@ -47,6 +47,8 @@ class CTNode:
         self.atoms = atoms
         self.cost = cost
         self.constraint_count = constraint_count
+        self.c_count : int = 0
+        self.conflict : Union[Symbol,None] = None
 
     def __gt__(self, other : CTNode) -> bool:
         if self.cost > other.cost:
@@ -127,13 +129,13 @@ class CTNode:
                             self.plans[atom.arguments[0].arguments[1].number].occurs.append(atom)                          
                         else:
                             self.plans[atom.arguments[0].number].positions.append(atom)
-                            if atom.name == 'goalReached':
+                            if atom.name == 'goalReached' and atom.arguments[1]!=Supremum:
                                 cost += atom.arguments[1].number
                                 self.plans[atom.arguments[0].number].cost = atom.arguments[1].number
 
         self.cost += cost
 
-        logger.debug(f"low level search terminated for meta agent {meta_agent} with joint cost {cost}")
+        logger.debug(f"low level search terminated for meta agent {meta_agent} with cost {cost}")
                         
         return ret.satisfiable
         
@@ -190,15 +192,14 @@ class CTNode:
 
         return plan.cost < inf
 
-    def validate_plans(self) -> Union[Symbol,bool]:
+    def validate_plans(self) -> bool:
 
         ctl : Control
         conflicts : List[Symbol] = []
 
-        def validate_parser( model : Model, conflicts : List[Symbol]) -> bool:
+        def validate_parser( model : Model, conflicts : List[Symbol]) -> List[Symbol]:
             for atom in model.symbols(shown=True):
-                if(atom.name == 'minConflict'):
-                    conflicts.append(atom)
+                conflicts.append(atom)
             return False
 
         logger.debug("Validate plans invoked")
@@ -215,47 +216,63 @@ class CTNode:
                     fact = backend.add_atom(atom)
                     backend.add_rule([fact])
                     
-
         ctl.ground([('base',[])])
 
         ctl.solve(on_model=lambda model : validate_parser(model,conflicts))
 
-        return conflicts[0] if conflicts else False
+        self.c_count = len(conflicts)
 
-    def branch(self,conflict : Symbol, max_horizon : int) -> Tuple[CTNode,CTNode]:
+        self.conflict = conflicts[0] if conflicts else None
+
+        return conflicts
+
+    def branch(self,conflict : Symbol, max_horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]:
 
         logger.debug("branch invoked")
 
-        node1 : CTNode = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,self.cost,self.constraint_count+1)
-        node2 : CTNode = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,self.cost,self.constraint_count+1)
-
-        constraint_type : List[str,str] = ["constraint","constraint"]
         conflict_type : str = conflict.arguments[0].name
         agent1 : Number = conflict.arguments[1]
-        agent2 : Number  = conflict.arguments[2]
+        agent2 : Number = conflict.arguments[2]
+        constraint1_type : str = 'meta_constraint' if self.conflic_matrix and self.conflic_matrix.is_meta_agent(agent1.number) else 'constraint'
+        constraint2_type : str = 'meta_constraint' if self.conflic_matrix and self.conflic_matrix.is_meta_agent(agent2.number) else 'constraint'
         time : Number = conflict.arguments[4]
-
-        if self.conflic_matrix:
-            constraint_type[0] = "meta_constraint" if self.conflic_matrix.is_meta_agent(agent1.number) else "constraint"
-            constraint_type[1] = "meta_constraint" if self.conflic_matrix.is_meta_agent(agent2.number) else "constraint"
+        old_cost : int = self.cost
+        old_ccount : int = self.c_count
+        old_plan : Plan = deepcopy(self.plans[agent1.number])
+        constraint1 : Symbol
+        constraint2 : Symbol
+        node2 : CTNode
 
         if conflict_type == 'vertex':
             loc : Function = conflict.arguments[3]
-            node1.plans[agent1.number].constraints.append(Function(name=constraint_type[0], arguments=[agent1,loc,time]))
-            node1.plans[agent2.number].constraints.append(Function(name=constraint_type[1], arguments=[agent2,loc,time]))
+            constraint1 = Function(name=constraint1_type, arguments=[agent1,loc,time])
+            constraint2 = Function(name=constraint2_type, arguments=[agent2,loc,time])
 
         else:
             loc1 : Function = conflict.arguments[3].arguments[0]
             loc2 : Function = conflict.arguments[3].arguments[1]
             move1 : Function = Function('',[Number(loc2.arguments[0].number-loc1.arguments[0].number),Number(loc2.arguments[1].number-loc1.arguments[1].number)],True)
             move2 : Function = Function('',[Number(loc1.arguments[0].number-loc2.arguments[0].number),Number(loc1.arguments[1].number-loc2.arguments[1].number)],True)
-            node1.plans[agent1.number].constraints.append(Function(name=constraint_type[0], arguments=[agent1,loc1,move1,time]))
-            node2.plans[agent2.number].constraints.append(Function(name=constraint_type[1], arguments=[agent2,loc2,move2,time]))
+            constraint1 = Function(name=constraint1_type, arguments=[agent1,loc1,move1,time])
+            constraint2 = Function(name=constraint2_type, arguments=[agent2,loc2,move2,time])
 
-        node1.low_level(agent1.number,max_horizon)
+
+        self.constraint_count += 1
+        self.plans[agent1.number].constraints.append(constraint1)
+        self.low_level(agent1.number,max_horizon)
+        self.validate_plans()
+        if self.cost <= old_cost and self.c_count < old_ccount:
+            return self, None
+        
+        node2 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,self.constraint_count)
+        node2.plans[agent2.number].constraints.append(constraint2)
+        node2.plans[agent1.number] = old_plan
         node2.low_level(agent2.number,max_horizon)
+        node2.validate_plans()
 
-        return node1, node2
+        if node2.cost <= old_cost and node2.c_count < old_ccount:
+            return node2, None  
+        else: return self, node2
 
 class ConflictMatrix:
 
@@ -291,41 +308,39 @@ class ConflictMatrix:
             self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
 
     def should_merge(self,agent1 : int, agent2 : int, cthreshold : int) -> bool:
-        return self._get_c_count(agent1,agent2) >= cthreshold
-
-    def _c_count(self,agent1 : int, agent2 : int) -> int:
-        return self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1]
-
-    def _get_c_count(self, agent1 : int,agent2 : int) -> int:
         if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
             if agent1 > agent2:
                 temp : int = agent1
                 agent1 = agent2
                 agent2 = temp
-            total_conflicts : int = 0
-            self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1] += 1
-            
-            if self.is_meta_agent(agent1) and self.is_meta_agent(agent2):
-                for a1 in self.meta_agents[agent1-1]:
-                    for a2 in self.meta_agents[agent2-1]:
-                        total_conflicts += self._c_count(a1,a2)
-            
-            if self.is_meta_agent(agent1):
-                for agent in self.meta_agents[agent1-1]:
-                    total_conflicts += self._c_count(agent,agent2)
+            return self._get_c_count(agent1,agent2) >= cthreshold
+        else:
+            return False
 
-            if self.is_meta_agent(agent2):
-                for agent in self.meta_agents[agent2-1]:
-                    total_conflicts += self._c_count(agent,agent1)
+    def _c_count(self,agent1 : int, agent2 : int) -> int:
+        return self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1]
+
+    def _get_c_count(self, agent1 : int,agent2 : int) -> int:
+        total_conflicts : int = 0
+        self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1] += 1
             
-            else:
-                total_conflicts += self._c_count(agent1,agent2)
+        if self.is_meta_agent(agent1) and self.is_meta_agent(agent2):
+            for a1 in self.meta_agents[agent1-1]:
+                for a2 in self.meta_agents[agent2-1]:
+                    total_conflicts += self._c_count(a1,a2)
+            
+        if self.is_meta_agent(agent1):
+            for agent in self.meta_agents[agent1-1]:
+                total_conflicts += self._c_count(agent,agent2)
 
-            return total_conflicts
-                      
-        else: 
-            return 0
+        if self.is_meta_agent(agent2):
+            for agent in self.meta_agents[agent2-1]:
+                total_conflicts += self._c_count(agent,agent1)
+            
+        else:
+            total_conflicts += self._c_count(agent1,agent2)
 
+        return total_conflicts
         
 
 
@@ -400,9 +415,12 @@ class CBSSolver:
             for agent in self.solution.agents:
                 root.low_level(agent,max_iter)
 
-            if(root.cost == inf):
+            if root.cost == inf:
                 logger.info("No initial solution found!")
                 return self.solution
+
+            if not root.validate_plans():
+                solution_nodes.append(root)
                     
             open_queue.append(root)
 
@@ -410,39 +428,47 @@ class CBSSolver:
 
             while open_queue:
 
-                current = open_queue.pop(0)
+                if not solution_nodes:
 
-                first_conflict : Union[Symbol,bool] = current.validate_plans()
-
-                if first_conflict:
+                    current = open_queue.pop(0)
 
                     branch : bool = True
 
                     if self.meta:
-                        agent1 : int = first_conflict.arguments[1].number
-                        agent2 : int = first_conflict.arguments[2].number
+                        agent1 : int = current.conflict.arguments[1].number
+                        agent2 : int = current.conflict.arguments[2].number
 
                         if current.conflic_matrix.should_merge(agent1,agent2,self.meta_threshold):
                             logger.debug(f"Merged Agents {current.conflic_matrix.meta_agents[agent1-1]} and {current.conflic_matrix.meta_agents[agent2-1]}")
                             branch = False
                             current.conflic_matrix.merge(agent1,agent2)
                             current.low_level(agent1, max_iter)
-                            if self.greedy:
-                                if current.cost < inf : open_queue.insert(0,current)
-                            else:
-                                if current.cost < inf : insort(open_queue,current)
+                            if current.cost < inf:
+                                if not current.validate_plans():
+                                    solution_nodes.append(current)
+                                    break
+                                if self.greedy:
+                                    open_queue.insert(0,current)
+                                else:
+                                    insort(open_queue,current)
 
                     if branch:
-                        node1, node2 = current.branch(first_conflict,max_iter)
+                        node1, node2 = current.branch(current.conflict,max_iter)
+                        if node1.c_count == 0:
+                            solution_nodes.append(node1) 
+                            break
+                        elif node2 and node2.c_count == 0:
+                            solution_nodes.append(node2) 
+                            break
+
                         if self.greedy:
-                            if node1.cost < inf : open_queue.insert(0,node1)
-                            if node2.cost < inf : open_queue.insert(0,node2)
+                            open_queue.insert(0,node1)
+                            if node2: open_queue.insert(0,node2)
                         else:
-                            if node1.cost < inf : insort(open_queue,node1)
-                            if node2.cost < inf : insort(open_queue,node2)
+                            insort(open_queue,node1)
+                            if node2: insort(open_queue,node2)
                         
                 else:
-                    solution_nodes.append(current)
                     break
 
         except KeyboardInterrupt:

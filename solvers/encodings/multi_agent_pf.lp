@@ -4,13 +4,13 @@
 
 { move(R,D,t) : direction(D) } 1 :- planning(R).
 
-:- position(R,C,T), goalReached(R',T'), goal(R',C), T' < T.
+:- move(R,D,t), goalReached(R,T), T < t.
 
 position(R,(X+DX,Y+DY),t) :- move(R,(DX,DY),t), position(R,(X,Y),t-1).
 
 :- move(R,(DX,DY),t), position(R,(X,Y) ,t-1), not node((X+DX,Y+DY)).
 
-position(R,C,t) :- position(R,C,t-1), not move(R,_,t), planning(R), not goalReached(R,_).
+position(R,C,t) :- position(R,C,t-1), not move(R,_,t), planning(R).
 
 % Vertex Conflict
 :- position(R,(X,Y),t), position(R',(X,Y),t), R!=R', planning(R).
@@ -38,6 +38,6 @@ goalReached(R,t) :- goal(R,C), position(R,C,t), planning(R), not block(t).
 :- not goalReached(R,_), planning(R), query(t).
 
 #show.
-#show goalReached(R,T) : planning(R), goalReached(R,T).
+#show goalReached(R,T) : planning(R), T = #min{ T', R : goalReached(R, T')}.
 #show position(R,C,T) : planning(R), position(R,C,T).
 #show occurs(object(robot,R), action(move,D),T) : move(R,D,T).
