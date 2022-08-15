@@ -1,5 +1,6 @@
 from __future__ import annotations
 from bisect import insort
+from pickle import TRUE
 from typing import Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model, Supremum
 from clingo.solving import SolveResult, SolveHandle
@@ -122,16 +123,20 @@ class CTNode:
                 step += 1
                 if ret.satisfiable:
                     optimal_model = handle.model()
-                    for optimal_model in handle:
+                    itr = iter(handle)
+                    for optimal_model in itr:
                         pass
-                    for atom in optimal_model.symbols(shown=True):
-                        if atom.name == 'occurs':
-                            self.plans[atom.arguments[0].arguments[1].number].occurs.append(atom)                          
-                        else:
-                            self.plans[atom.arguments[0].number].positions.append(atom)
-                            if atom.name == 'goalReached' and atom.arguments[1]!=Supremum:
-                                cost += atom.arguments[1].number
-                                self.plans[atom.arguments[0].number].cost = atom.arguments[1].number
+                    if optimal_model:
+                        for atom in optimal_model.symbols(shown=True):
+                            if atom.name == 'occurs':
+                                self.plans[atom.arguments[0].arguments[1].number].occurs.append(atom)                          
+                            else:
+                                self.plans[atom.arguments[0].number].positions.append(atom)
+                                if atom.name == 'goalReached' and atom.arguments[1]!=Supremum:
+                                    cost += atom.arguments[1].number
+                                    self.plans[atom.arguments[0].number].cost = atom.arguments[1].number
+                    else:
+                        cost = inf
 
         self.cost += cost
 
@@ -192,7 +197,7 @@ class CTNode:
 
         return plan.cost < inf
 
-    def validate_plans(self) -> bool:
+    def validate_plans(self) -> List[Symbol]:
 
         ctl : Control
         conflicts : List[Symbol] = []
@@ -274,6 +279,22 @@ class CTNode:
             return node2, None  
         else: return self, node2
 
+    def clear_constraints(self, agent : int) -> int:
+        count : int = 0
+        plan : Plan
+        if self.conflic_matrix and self.conflic_matrix.is_meta_agent(agent):
+            for ag in self.conflic_matrix.meta_agents[agent-1]:
+                plan = self.plans[ag]
+                count += len(plan.constraints)
+                plan.constraints = []
+
+        else:
+            plan = self.plans[agent]
+            count += len(plan.constraints)
+            plan.constraints = []
+        self.constraint_count -= count
+        return count
+
 class ConflictMatrix:
 
     def __init__(self, agents : List[Union[int,Tuple[int,...]]]) -> None:
@@ -308,7 +329,7 @@ class ConflictMatrix:
             self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
 
     def should_merge(self,agent1 : int, agent2 : int, cthreshold : int) -> bool:
-        if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
+        if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and self.meta_agents[agent1-1] != self.meta_agents[agent2-1]:
             if agent1 > agent2:
                 temp : int = agent1
                 agent1 = agent2
@@ -342,15 +363,18 @@ class ConflictMatrix:
 
         return total_conflicts
         
+    def clear_cmatrix(self):
+        self.conflict_matrix : List[int] = [0] * int(len(self.meta_agents)*(len(self.meta_agents)-1) / 2)
 
 
 class CBSSolver:
 
-    def __init__(self, instance_file : str, greedy : bool = False,meta : bool = False, meta_threshold : int = 2, log_level : int = logging.INFO) -> None:
+    def __init__(self, instance_file : str, greedy : bool = False,meta : bool = False, icbs : bool = False, threshold : int = 2, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
         self.greedy = greedy
         self.meta = meta
-        self.meta_threshold = meta_threshold
+        self.icbs = icbs
+        self.meta_threshold = threshold
         self.solution = Solution()
         self.meta_agents : List[Union[int,Tuple[int]]] = []
         self.conflict_matrix : List[List[int]] = []
@@ -442,15 +466,26 @@ class CBSSolver:
                             logger.debug(f"Merged Agents {current.conflic_matrix.meta_agents[agent1-1]} and {current.conflic_matrix.meta_agents[agent2-1]}")
                             branch = False
                             current.conflic_matrix.merge(agent1,agent2)
-                            current.low_level(agent1, max_iter)
-                            if current.cost < inf:
+                            if self.icbs:
+                                current.conflic_matrix.clear_cmatrix()
+                                for agent in set(current.conflic_matrix.meta_agents):
+                                    ag : int = agent[0] if type(agent) == tuple else agent
+                                    if current.clear_constraints(ag):
+                                        current.low_level(ag,max_iter)
                                 if not current.validate_plans():
                                     solution_nodes.append(current)
                                     break
-                                if self.greedy:
-                                    open_queue.insert(0,current)
-                                else:
-                                    insort(open_queue,current)
+                                open_queue = [current]
+                            else:
+                                current.low_level(agent1, max_iter)
+                                if current.cost < inf:
+                                    if not current.validate_plans():
+                                        solution_nodes.append(current)
+                                        break
+                                    if self.greedy:
+                                        open_queue.insert(0,current)
+                                    else:
+                                        insort(open_queue,current)
 
                     if branch:
                         node1, node2 = current.branch(current.conflict,max_iter)
