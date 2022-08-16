@@ -1,6 +1,6 @@
+"""Imports"""
 from __future__ import annotations
 from bisect import insort
-from pickle import TRUE
 from typing import Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model, Supremum
 from clingo.solving import SolveResult, SolveHandle
@@ -13,6 +13,12 @@ import logging
 from copy import deepcopy
 from solution import Solution, Plan
 
+"""
+This file implements the conflict based search algorithm (CBS) based on Sharon, Guni & Stern, Roni & Felner, Ariel & Sturtevant, Nathan. (2015).
+Conflict-based search for optimal multi-agent pathfinding. Artificial Intelligence. 219. 40-66. 10.1016/j.artint.2014.11.006.
+It includes the basic CBS algorithm, as well as meta agent CBS (MA-CBS) and the bypassing (BP) and improved CBS (ICBS) extensions to the algorithm.
+A more detailed description can be found in the report directory in this repository. 
+"""
 
 """Logging setup"""
 logger = logging.getLogger(__name__)
@@ -32,14 +38,42 @@ VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
 
 class CTNode:
     """
-    CTNode class represents a node in the constraint tree of the conflict based search algorithm.
-    Stores solution atoms for each agent, contraints imposed on agents paths and the total cost of all paths
+    CTNode represents a node in the constraint tree of the conflict based search algorithm.
+
+    Attributes:
+        plans : Dict[int,Plan]
+            Stores current plans for all agents
+        conflic_matrix : ConflictMatrix
+            Stores conflict count between all agents and current meta agents (MA-CBS only, else None)
+        atoms : List[Symbol]
+            Stores preprocessing atoms describing the current instance file
+        cost : int
+            Stores sum of costs of all current plans
+        constraint_count : int
+            Stores number of constraints in all current plans
+        conflict_count : int
+            Stores nubmer of conflicts between all current plans
+        conflicts : List[Symbol]  
+            Stores conflic atoms between all current plans (ICBS)
 
     Methods:
-        __init__(self,plans : Dict[int,List[int,List[Symbol],List[Symbol]]]=None, constraints : List[Symbol]=None, atoms : List[Symbol]=None) -> None
+        __init__(self,plans : Dict[int,Plan]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0, constraint_count : int = 0) -> None
+        __gt__(self, other : CTNode) -> bool
+        __ge__(self, other : CTNode) -> bool
+        __lt__(self, other : CTNode) -> bool
+        __le__(self, other : CTNode) -> bool
         low_level(self,agent : int) -> bool
+            Wrapper for low level search
+        low_level_ma(self,agent : int, horizon : int) -> bool
+            Computes paths for all agents in meta agent
+        low_level_sa(self,agent : int, horizon : int) -> bool
+            Computes path for agent
         validate_plans(self) -> List[Symbol]
-        branch(self,conflict : Symbol) -> Tuple[CTNode,CTNode]    
+            Determines conflicts between all current paths
+        branch(self,conflict : Symbol, max_horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]
+            Branches the CTNode along a conflict into new CTNodes    
+        clear_constraints(self, agent : int) -> int
+            Deletes constraints in the plan of an agent
     """
 
     def __init__(self,plans : Dict[int,Plan]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0, constraint_count : int = 0) -> None:
@@ -48,8 +82,8 @@ class CTNode:
         self.atoms = atoms
         self.cost = cost
         self.constraint_count = constraint_count
-        self.c_count : int = 0
-        self.conflict : Union[Symbol,None] = None
+        self.conflict_count : int = 0
+        self.conflicts : List[Symbol] = []
 
     def __gt__(self, other : CTNode) -> bool:
         if self.cost > other.cost:
@@ -74,6 +108,21 @@ class CTNode:
         return not self.__gt__(other)
 
     def low_level(self,agent : int, horizon : int) -> bool:
+        """
+        Wrapper function for low level search to allow for both
+        regular and meta agent cbs.
+
+        Args:
+            agent : (meta) Agent for which a path should be computed.
+            horizon : Upper bound on the path lenght for the incremental solving.
+
+        Side effect: 
+            self.cost : Updated with the change in cost of the new plan(s).
+            self.plans : Updated with occurs and position atoms of the new plan(s)
+
+        Returns:
+            True, if a valid path was found with length <= horizon else False 
+        """
         if not self.conflic_matrix:
             return self.low_level_sa(agent,horizon)
         elif self.conflic_matrix.is_meta_agent(agent):
@@ -82,6 +131,21 @@ class CTNode:
             return self.low_level_sa(agent,horizon)
 
     def low_level_ma(self,agent : int, horizon : int) -> bool:
+        """
+        Computes paths for all agents in the meta agent  
+
+        Args:
+            agent : Meta agent for which a path should be computed.
+            horizon : Upper bound on the path lenght for the incremental solving.
+
+        Side effect: 
+            self.cost : Updated with the change in cost of the new plans.
+            self.plans : Updated with occurs and position atoms of the new plans
+
+        Returns:
+            True if a valid paths where found with max length <= horizon else False 
+        """
+
         meta_agent : Tuple[int] = self.conflic_matrix.meta_agents[agent-1]
         ctl : Control = Control(['-Wnone'])
         step : int = 0 
@@ -146,6 +210,20 @@ class CTNode:
         
 
     def low_level_sa(self,agent : int, horizon : int) -> bool:
+        """
+        Computes path for agent  
+
+        Args:
+            agent : Agent for which a path should be computed.
+            horizon : Upper bound on the path lenght for the incremental solving.
+
+        Side effect: 
+            self.cost : Updated with the change in cost of the new plan.
+            self.plans : Updated with occurs and position atoms of the new plan
+
+        Returns:
+            True if a valid path was found with max length <= horizon else False 
+        """
 
         ctl : Control = Control(['-Wnone',f'-c r={agent}'])
         step : int = 0 
@@ -198,14 +276,25 @@ class CTNode:
         return plan.cost < inf
 
     def validate_plans(self) -> List[Symbol]:
+        """
+        Determines conflicts between current plans 
+
+        Side effect:
+            self.conflict_count : Updated with the number of found conflicts
+            self.conflicts : Updated with the atoms of all found conflicts
+        
+        Returns:
+            Conflict atoms of all found conflicts
+
+        """
 
         ctl : Control
         conflicts : List[Symbol] = []
 
-        def validate_parser( model : Model, conflicts : List[Symbol]) -> List[Symbol]:
+        def validate_parser( model : Model, conflicts : List[Symbol]) -> bool:
             for atom in model.symbols(shown=True):
                 conflicts.append(atom)
-            return False
+            return bool
 
         logger.debug("Validate plans invoked")
 
@@ -225,13 +314,28 @@ class CTNode:
 
         ctl.solve(on_model=lambda model : validate_parser(model,conflicts))
 
-        self.c_count = len(conflicts)
-
-        self.conflict = conflicts[0] if conflicts else None
+        self.conflict_count = len(conflicts)
 
         return conflicts
 
-    def branch(self,conflict : Symbol, max_horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]:
+    def branch(self,conflict : Symbol, horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]:
+        """
+        Branches the CTNode along a conflict into two new CTNodes, each with an additional constraint for one of the conflicting agents.
+        Additionally implements bypassing, which will return only the Node containing the bypass if a valid bypass is found.
+
+        Args:
+            conflict : Conflict atom of the conflict that is supposed to be branched
+            horizon : Upper bound on the path lenght for the low level search
+
+        Side effects:
+            plans : Updates plan of conflicting agent with path under new constraint
+            cost : Updates cost with the cost of the new plan
+            constraint_count :  Increments constraint_count by one
+
+        Returns:
+            New CTNodes, replanned with additional constraints or only one Node of a valid bypass is found. 
+        """
+
 
         logger.debug("branch invoked")
 
@@ -242,7 +346,7 @@ class CTNode:
         constraint2_type : str = 'meta_constraint' if self.conflic_matrix and self.conflic_matrix.is_meta_agent(agent2.number) else 'constraint'
         time : Number = conflict.arguments[4]
         old_cost : int = self.cost
-        old_ccount : int = self.c_count
+        old_ccount : int = self.conflict_count
         old_plan : Plan = deepcopy(self.plans[agent1.number])
         constraint1 : Symbol
         constraint2 : Symbol
@@ -264,22 +368,34 @@ class CTNode:
 
         self.constraint_count += 1
         self.plans[agent1.number].constraints.append(constraint1)
-        self.low_level(agent1.number,max_horizon)
+        self.low_level(agent1.number,horizon)
         self.validate_plans()
-        if self.cost <= old_cost and self.c_count < old_ccount:
+        if self.cost <= old_cost and self.conflict_count < old_ccount:
             return self, None
         
         node2 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,self.constraint_count)
         node2.plans[agent2.number].constraints.append(constraint2)
         node2.plans[agent1.number] = old_plan
-        node2.low_level(agent2.number,max_horizon)
+        node2.low_level(agent2.number,horizon)
         node2.validate_plans()
 
-        if node2.cost <= old_cost and node2.c_count < old_ccount:
+        if node2.cost <= old_cost and node2.conflict_count < old_ccount:
             return node2, None  
         else: return self, node2
 
     def clear_constraints(self, agent : int) -> int:
+        """
+            Removes all constraints from an agents plan 
+
+            Args:
+                agent : Agent whos constraints should be cleared.
+
+            Side effects:
+                constraint_count : Decremented by number of removed constraints.
+
+            Returns:
+                Number of removed constraints
+        """
         count : int = 0
         plan : Plan
         if self.conflic_matrix and self.conflic_matrix.is_meta_agent(agent):
@@ -296,15 +412,62 @@ class CTNode:
         return count
 
 class ConflictMatrix:
+    """
+    ConflictMatrix represents the conflict matrix used for MA-CBS. Keeps track of the number of conflicts
+    between all agents and the current meta agents.
+
+    Attributes:
+        meta_agents : List[Union[int,Tuple[int,...]]]
+            Stores a reference to the respective meta agent for all agents.
+        conflict_matrix : List[int]
+            Stores the number of conflicts between all pairs of agents.
+
+    Methods:
+        __init__(self, agents : List[Union[int,Tuple[int,...]]]) -> None
+        is_meta_agent(self,agent : int) -> bool
+            Returns True if agents is part of a meta agent, else False.
+        merge(self, agent1 : int, agent2 : int) -> None
+            Merges two (meta) agents to a joint meta agent.
+        update(self, agent1 : int, agent2: int) -> None
+            Increments the conflict matrix for two agents by one.
+        should_merge(self,agent1 : int, agent2 : int, cthreshold : int) -> bool
+            Returns True if the number of conflicts between two agents exeeds the threshold, else False.
+        _c_count(self,agent1 : int, agent2 : int) -> int
+            (Should not be called directly). Returns conflict matrix entry for a pair of agents.
+        _get_c_count(self, agent1 : int,agent2 : int) -> int
+            (Should not be called directly). Returns the number of conflicts between two (meta) agents.
+        clear_cmatrix(self) -> None    
+            Resets conflict count to zero for all agent pairs.
+    """
+
 
     def __init__(self, agents : List[Union[int,Tuple[int,...]]]) -> None:
         self.meta_agents = agents.copy()
         self.conflict_matrix : List[int] = [0] * int(len(self.meta_agents)*(len(self.meta_agents)-1) / 2)
 
     def is_meta_agent(self,agent : int) -> bool:
+        """
+        Checks if agent is part of a meta agent.
+
+        Args:
+            agent : Agent to be checked.
+
+        Returns:
+            True if agent is part of meta agent, else False
+        """
         return type(self.meta_agents[agent-1]) == tuple
 
     def merge(self, agent1 : int, agent2 : int) -> None:
+        """
+        Merges two (meta) agents to a joint meta agent. 
+
+        Args:
+            agent1 : Agent to be merged (If agent is part of meta agent the whole meta agent will be merged). 
+            agent2 : Agent to be merged (If agent is part of meta agent the whole meta agent will be merged).
+
+        Side effect:
+            meta_agents : Entries for all merged agents are updated with reference to new meta agent.
+        """
 
         if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents):
 
@@ -321,6 +484,16 @@ class ConflictMatrix:
             
 
     def update(self, agent1 : int, agent2: int) -> None:
+        """
+        Updates conflict count for a pair of agents.
+
+        Args:
+            agent1 : First agent in conflict.
+            agent2 : Second agent in conflict.
+
+        Side effect:
+            conflict_matrix : Entry for (agent1,agent2) is incremented by one.
+        """
         if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and agent1 != agent2:
             if agent1 > agent2:
                 temp : int = agent1
@@ -329,6 +502,18 @@ class ConflictMatrix:
             self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-1)] += 1
 
     def should_merge(self,agent1 : int, agent2 : int, cthreshold : int) -> bool:
+        """
+        Checks if two agents should be merged according to threshold.
+
+        Args:
+            agent1 : First agent to be checked.
+            agent1 : Second agent to be checked.
+            cthreshold : Threshold for number of conflicts at which two agents are beeing merged.
+
+        Returns:
+            True if number of conflicts between agents has reached threshold, else False
+        """
+
         if 0 < agent1 <= len(self.meta_agents) and 0 < agent2 <= len(self.meta_agents) and self.meta_agents[agent1-1] != self.meta_agents[agent2-1]:
             if agent1 > agent2:
                 temp : int = agent1
@@ -339,9 +524,30 @@ class ConflictMatrix:
             return False
 
     def _c_count(self,agent1 : int, agent2 : int) -> int:
+        """
+        Should not be called directly. Gets entry in conflict matrix.
+
+        Args:
+            agent1 : First agent in entry.
+            agent2 : Second agent in entry.
+
+        Returns:
+            Entry in conflict matrix for (agent1,agent2). 
+        """
+
         return self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1]
 
     def _get_c_count(self, agent1 : int,agent2 : int) -> int:
+        """
+        Should not be called directly. Gets number of conflicts between two (meta)agents.
+
+        Args:
+            agent1 : First agent.
+            agent2 : Second agent.
+
+        Returns:
+            Returns number of all conflicts between the (meta)agents. 
+        """
         total_conflicts : int = 0
         self.conflict_matrix[(agent1-1)*len(self.meta_agents)+(agent2-(agent1)*(agent1+1)//2)-1] += 1
             
@@ -363,11 +569,40 @@ class ConflictMatrix:
 
         return total_conflicts
         
-    def clear_cmatrix(self):
-        self.conflict_matrix : List[int] = [0] * int(len(self.meta_agents)*(len(self.meta_agents)-1) / 2)
+    def clear_cmatrix(self) -> None:
+        """
+        Resets all conflict counts in conflict matrix to zero.
+
+        Side effect:
+            conflict_matrix : Updated to zero for all agent pairs.
+        """
+        self.conflict_matrix : List[int] = [0] * len(self.conflict_matrix)
 
 
 class CBSSolver:
+    """
+    Implements solver object which executes the CBS algorithm with given instance file and parameters
+
+    Attributes:
+        instance_file : str
+            Path of the asprilo instance file that is to be solved.
+        greedy : bool
+            Activates suboptimal greedy search if True.
+        meta : bool
+            Activates MA-CBS if True.
+        icbs : bool
+            Activates ICBS if True.
+        threshold :
+            Sets conflict treshold for (meta)agent merging in MA-CBS.
+        solution : Solution
+            Contains the solution found by CBS.
+
+    Methods:
+        preprocessing(self) -> None
+            Parses the instance file and initializes the solver.
+        solve(self) -> Solution
+            Executes main CBS algorithm
+    """
 
     def __init__(self, instance_file : str, greedy : bool = False,meta : bool = False, icbs : bool = False, threshold : int = 2, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
@@ -376,13 +611,22 @@ class CBSSolver:
         self.icbs = icbs
         self.meta_threshold = threshold
         self.solution = Solution()
-        self.meta_agents : List[Union[int,Tuple[int]]] = []
-        self.conflict_matrix : List[List[int]] = []
         logger.setLevel(log_level)
 
     def preprocessing(self) -> None:
+        """
+        Parses the instance file and initalized solver with information about the instance.
+
+        Side effects:
+            solution.inits : Updated with init atoms of instance file for the resulting plan.
+            solution.agents : Updated with list contaning all agents in the instance file.
+            solution.num_of_nodes : Updated with number of nodes of the instance.
+            solution.plans : Plans for all agents are initialized with their goal.
+            solution.instance_atoms : Updated with atoms, describing the instance.
+        """
 
         def preprocessing_parser(model : Model) -> bool:
+            """Parser function for the model of the preprocessing aps file."""
 
             for atom in model.symbols(atoms=True):
                 if atom.name == 'init':
@@ -412,6 +656,15 @@ class CBSSolver:
 
 
     def solve(self) -> Solution:
+        """
+        Executes the main CBS algorithm and extensions, depending on the set options. 
+
+        Side effect:
+            solution : Updated with plans and cost of the found solution and execution time
+
+        Returns:
+            Solution Object with the solution obtained by CBS.
+        """
 
         open_queue : List[CTNode] = []
         solution_nodes : List[CTNode] = []
@@ -459,8 +712,8 @@ class CBSSolver:
                     branch : bool = True
 
                     if self.meta:
-                        agent1 : int = current.conflict.arguments[1].number
-                        agent2 : int = current.conflict.arguments[2].number
+                        agent1 : int = current.conflicts.arguments[1].number
+                        agent2 : int = current.conflicts.arguments[2].number
 
                         if current.conflic_matrix.should_merge(agent1,agent2,self.meta_threshold):
                             logger.debug(f"Merged Agents {current.conflic_matrix.meta_agents[agent1-1]} and {current.conflic_matrix.meta_agents[agent2-1]}")
@@ -488,11 +741,11 @@ class CBSSolver:
                                         insort(open_queue,current)
 
                     if branch:
-                        node1, node2 = current.branch(current.conflict,max_iter)
-                        if node1.c_count == 0:
+                        node1, node2 = current.branch(current.conflicts,max_iter)
+                        if node1.conflict_count == 0:
                             solution_nodes.append(node1) 
                             break
-                        elif node2 and node2.c_count == 0:
+                        elif node2 and node2.conflict_count == 0:
                             solution_nodes.append(node2) 
                             break
 

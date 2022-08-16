@@ -1,7 +1,7 @@
+"""Imports"""
 from __future__ import annotations
-from ctypes import Union
-from typing import Callable, List, Tuple
-from clingo import Control, Number, Function, Symbol, Model
+from typing import Callable, List, Union
+from clingo import Control, Number, Function, Model
 from time import perf_counter
 from math import inf
 from os import path
@@ -10,6 +10,11 @@ from sys import stdout
 from solution import Solution, Plan
 import permutation_tools as pt
 import logging
+
+"""
+This file implements a prioritized planning algorithm for asprilo instances. A more detailed description can be found in the report directory 
+of this repository.
+"""
 
 """Logging setup"""
 logger = logging.getLogger(__name__)
@@ -29,22 +34,52 @@ SAPF_FILE : str = path.join(ENCODING_DIR,'single_agent_pf.lp')
 CONFLICT_DETECTION_FILE : str = path.join(ENCODING_DIR,'conflict_detection.lp')
 SAPF_NC_FILE : str = path.join(ENCODING_DIR,'single_agent_pf_nc.lp')
 
-class PrioritizedPlanningSolver():
+class PrioritizedPlanningSolver:
+    """
+    Implements a solver object which executes the prioritized planning algorithm.
+
+    Attributes:
+        instance_file : str
+            Path to the asprilo instance file that is to ve solved.
+        optimize : bool 
+            If True, changes the priotization order of the agents to better avoid conflicts (will increase runtime).
+        backtrack : bool
+            If True, allows for backtrakking i.e. changes in agent order if the initial ordering does not lead to a solution.
+        max_depth : int
+            Determines the maximum allowed number of ordering changes for backtrakking.
+        max_horizon : int
+            Maximum path lenght for individual agent pathfinding.
+        solution : Solution
+            Stores the solution obtained by prioritized planning.
+        
+
+    """
 
     def __init__(self,instance_file : str, optimize : bool = False, backtrack : bool = False, maxdepth : int = 10, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
         self.optimize = optimize
         self.backtrack = backtrack
-        self.maxdepth = maxdepth
+        self.max_depth = maxdepth
         self.max_horion : int = 0
         self.solution : Solution = Solution()
         logger.setLevel(log_level)
 
 
     def preprocessing(self) -> None:
+        """
+        Parses the instance file and initalized solver with information about the instance.
+
+        Side effects:
+            solution.inits : Updated with init atoms of instance file for the resulting plan.
+            solution.agents : Updated with list contaning all agents in the instance file.
+            solution.num_of_nodes : Updated with number of nodes of the instance.
+            solution.plans : Plans for all agents are initialized with their goal.
+            solution.instance_atoms : Updated with atoms, describing the instance.
+        """
 
 
         def preprocessing_parser(model : Model) -> bool:
+            """Parse function for model created by preprocessing asp file"""
 
             for atom in model.symbols(atoms=True):
                 if atom.name == 'init':
@@ -74,6 +109,14 @@ class PrioritizedPlanningSolver():
 
 
     def optimize_schedule(self) -> List[int]:
+        """
+        Changes the prioritization order of agents according to the number of conflicts
+        between the shortest path of an agent with the shortest paths of the other agents.
+        (Will increase runtime and a better solution is not guaranteed).
+
+        Returns:
+            New ordering of agents.
+        """
 
         logger.debug("Optimization invoked")
 
@@ -81,6 +124,7 @@ class PrioritizedPlanningSolver():
         schedule : List[int] = []
 
         def optimization_parser(model : Model, schedule : List[int]) -> bool:
+            """Parser function for model created by no conflict detection pathfinding asp file"""
 
             agent_conflicts : List[List[int]] = [[agent,0,self.solution.initial_plans[agent].cost] for agent in self.solution.agents]
 
@@ -112,6 +156,18 @@ class PrioritizedPlanningSolver():
         return schedule if schedule else self.solution.agents.copy()
 
     def plan_path(self, agent : int) -> bool:
+        """
+        Computes the shortest path for an agent, avoiding collisions with allready planned paths.
+
+        Args:
+            agent : Agent for which a path should be planned
+
+        Side effect: 
+            self.solutions.plans : Updates the plan for the planning agent.
+
+        Returns:
+            True if a valid paths was found, else False.
+        """
 
         ctl : Control
         cost : int = 0
@@ -150,6 +206,15 @@ class PrioritizedPlanningSolver():
         return cost < inf    
 
     def solve(self) -> Solution:
+        """
+        Executes the prioritized planning algorithm.
+
+        Side effect: 
+            Updates plans in solution and execution time. 
+
+        Returns:
+            Solution object with the solution obtained by prioritized planning.
+        """
 
         logger.debug("Programm started")
         
@@ -169,7 +234,7 @@ class PrioritizedPlanningSolver():
             
 
         
-        for _ in range(self.maxdepth):
+        for _ in range(self.max_depth):
 
             satisfied = True
 
@@ -227,6 +292,17 @@ class PrioritizedPlanningSolver():
 
     @staticmethod   
     def incremental_solving(ctl : Control, max_horizon : int, model_parser : Callable[[Model],bool]) -> int:
+        """
+        Helper method for the multishot asp pathfinding
+
+        Args:
+            ctl : Clingo control object with preloaded facts and rules.
+            max_horizon : Upper bound for the amount of clingo calls i.e lenght of the path.
+            model_parser : Function passed to the Control.solve() call to parse the resulting model.
+
+        Returns:
+            Number of clingo calls i.e. pathlength if a path was found or max_horizon + 1 if not.
+        """
 
         ret, step = None, 0
 
