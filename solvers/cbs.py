@@ -68,8 +68,8 @@ class CTNode:
             Computes paths for all agents in meta agent
         low_level_sa(self,agent : int, horizon : int) -> bool
             Computes path for agent
-        validate_plans(self) -> List[Symbol]
-            Determines conflicts between all current paths
+        validate_plans(self) -> bool
+            Determines conflicts between all current paths, returns True if no conflict are found else False
         branch(self,conflict : Symbol, max_horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]
             Branches the CTNode along a conflict into new CTNodes    
         clear_constraints(self, agent : int) -> int
@@ -275,7 +275,7 @@ class CTNode:
 
         return plan.cost < inf
 
-    def validate_plans(self) -> List[Symbol]:
+    def validate_plans(self) -> bool:
         """
         Determines conflicts between current plans 
 
@@ -284,7 +284,7 @@ class CTNode:
             self.conflicts : Updated with the atoms of all found conflicts
         
         Returns:
-            Conflict atoms of all found conflicts
+            True if no conflicts are found, else False
 
         """
 
@@ -316,29 +316,31 @@ class CTNode:
 
         self.conflict_count = len(conflicts)
 
-        return conflicts
+        self.conflicts = conflicts
 
-    def branch(self,conflict : Symbol, horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]:
+        return not conflicts
+
+    def branch(self,conflict : Symbol, horizon : int, copy : bool = False) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]:
         """
         Branches the CTNode along a conflict into two new CTNodes, each with an additional constraint for one of the conflicting agents.
         Additionally implements bypassing, which will return only the Node containing the bypass if a valid bypass is found.
 
         Args:
-            conflict : Conflict atom of the conflict that is supposed to be branched
-            horizon : Upper bound on the path lenght for the low level search
+            conflict : Conflict atom of the conflict that is supposed to be branched.
+            horizon : Upper bound on the path lenght for the low level search.
+            copy : If True, both nodes will be new nodes insted of reusing the existing node.
 
         Side effects:
-            plans : Updates plan of conflicting agent with path under new constraint
-            cost : Updates cost with the cost of the new plan
-            constraint_count :  Increments constraint_count by one
-
+            plans : Updates plan of conflicting agent with path under new constraint.
+            cost : Updates cost with the cost of the new plan.
+            constraint_count :  Increments constraint_count by one.
+.
         Returns:
             New CTNodes, replanned with additional constraints or only one Node of a valid bypass is found. 
         """
 
 
         logger.debug("branch invoked")
-
         conflict_type : str = conflict.arguments[0].name
         agent1 : Number = conflict.arguments[1]
         agent2 : Number = conflict.arguments[2]
@@ -347,9 +349,10 @@ class CTNode:
         time : Number = conflict.arguments[4]
         old_cost : int = self.cost
         old_ccount : int = self.conflict_count
-        old_plan : Plan = deepcopy(self.plans[agent1.number])
+        old_plan : Plan = deepcopy(self.plans[agent1.number]) if not copy else None
         constraint1 : Symbol
         constraint2 : Symbol
+        node1 : CTNode
         node2 : CTNode
 
         if conflict_type == 'vertex':
@@ -365,23 +368,67 @@ class CTNode:
             constraint1 = Function(name=constraint1_type, arguments=[agent1,loc1,move1,time])
             constraint2 = Function(name=constraint2_type, arguments=[agent2,loc2,move2,time])
 
-
-        self.constraint_count += 1
-        self.plans[agent1.number].constraints.append(constraint1)
-        self.low_level(agent1.number,horizon)
-        self.validate_plans()
-        if self.cost <= old_cost and self.conflict_count < old_ccount:
-            return self, None
+        if copy:
+            node1 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,old_ccount + 1)
+        else:
+            node1 = self 
+            self.constraint_count += 1
+        node1.plans[agent1.number].constraints.append(constraint1)
+        node1.low_level(agent1.number,horizon)
+        node1.validate_plans()
+        if node1.cost <= old_cost and node1.conflict_count < old_ccount:
+            return node1, None
         
-        node2 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,self.constraint_count)
+        node2 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,old_ccount + 1)
         node2.plans[agent2.number].constraints.append(constraint2)
-        node2.plans[agent1.number] = old_plan
+        if not copy:
+            node2.plans[agent1.number] = old_plan
         node2.low_level(agent2.number,horizon)
         node2.validate_plans()
 
         if node2.cost <= old_cost and node2.conflict_count < old_ccount:
             return node2, None  
-        else: return self, node2
+        else: return node1, node2
+
+    def icbs_branch(self, horizon : int) -> Union[Tuple[CTNode,CTNode,int],Tuple[CTNode,None,None]]:
+        """
+        Branching funtion for ICBS. Examines every conflict in the current node and determines its cardinality.
+        Will branch one conflict with priority order cardinal > semi-cardinal > bypass > non-cardinal.
+        If a cardinal conflict is found, its minmal cost is returned as a lower bound. 
+
+        Args:
+            horizon : Upper bound for low level path finding
+
+        Returns:
+            The two CTNodes of the chosen conflict. If the conflict is cardinal the minimal cost is
+            returned as a third return value, else None. If a valid bypass is returned, the second node is None.
+        """
+        bypass : Union[CTNode,None] = None
+        ncnode1 : Union[CTNode,None] = None
+        ncnode2 : Union[CTNode,None] = None
+        scnode1 : Union[CTNode,None] = None
+        scnode2 : Union[CTNode,None] = None
+        node1 : CTNode
+        node2 : CTNode
+
+        for conflict in self.conflicts:
+            node1, node2 = self.branch(conflict,horizon,True)
+            if node2:
+                if (node1.cost > self.cost and node2.cost > self.cost) or node1.conflict_count == 0 or node2.conflict_count == 0:
+                    return node1, node2, min(node1.cost,node2.cost)
+                elif node1.cost > self.cost or node2.cost > self.cost:
+                    scnode1, scnode2 = node1, node2
+                else:
+                    ncnode1, ncnode2 = node1, node2
+            else:
+                bypass = node1
+            
+            if scnode1:
+                return scnode1, scnode2, None
+            elif bypass:
+                return bypass, None, None
+            else:
+                return ncnode1, ncnode2, None
 
     def clear_constraints(self, agent : int) -> int:
         """
@@ -671,6 +718,9 @@ class CBSSolver:
         max_iter : int 
         root : CTNode
         current : CTNode
+        node1 : CTNode
+        node2 : CTNode
+        lower_bound : int = 0
 
         try:
 
@@ -696,7 +746,7 @@ class CBSSolver:
                 logger.info("No initial solution found!")
                 return self.solution
 
-            if not root.validate_plans():
+            if root.validate_plans():
                 solution_nodes.append(root)
                     
             open_queue.append(root)
@@ -709,11 +759,14 @@ class CBSSolver:
 
                     current = open_queue.pop(0)
 
+                    if self.icbs and current.cost < lower_bound:
+                        continue
+
                     branch : bool = True
 
                     if self.meta:
-                        agent1 : int = current.conflicts.arguments[1].number
-                        agent2 : int = current.conflicts.arguments[2].number
+                        agent1 : int = current.conflicts[0].arguments[1].number
+                        agent2 : int = current.conflicts[0].arguments[2].number
 
                         if current.conflic_matrix.should_merge(agent1,agent2,self.meta_threshold):
                             logger.debug(f"Merged Agents {current.conflic_matrix.meta_agents[agent1-1]} and {current.conflic_matrix.meta_agents[agent2-1]}")
@@ -725,14 +778,14 @@ class CBSSolver:
                                     ag : int = agent[0] if type(agent) == tuple else agent
                                     if current.clear_constraints(ag):
                                         current.low_level(ag,max_iter)
-                                if not current.validate_plans():
+                                if current.validate_plans():
                                     solution_nodes.append(current)
                                     break
                                 open_queue = [current]
                             else:
                                 current.low_level(agent1, max_iter)
                                 if current.cost < inf:
-                                    if not current.validate_plans():
+                                    if current.validate_plans():
                                         solution_nodes.append(current)
                                         break
                                     if self.greedy:
@@ -741,7 +794,11 @@ class CBSSolver:
                                         insort(open_queue,current)
 
                     if branch:
-                        node1, node2 = current.branch(current.conflicts,max_iter)
+                        if self.icbs:
+                            node1, node2, low = current.icbs_branch(max_iter)
+                            #lower_bound = low if low else lower_bound
+                        else:
+                            node1, node2 = current.branch(current.conflicts[0],max_iter) 
                         if node1.conflict_count == 0:
                             solution_nodes.append(node1) 
                             break
@@ -761,6 +818,8 @@ class CBSSolver:
 
         except KeyboardInterrupt:
             logger.info("Search terminated by keyboard interrupt")
+            self.solution.plans = current.plans
+            self.solution.cost = current.cost
 
         self.solution.execution_time = perf_counter() - start_time
 
