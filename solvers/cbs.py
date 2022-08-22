@@ -676,6 +676,8 @@ class CBSSolver:
             Sets conflict treshold for (meta)agent merging in MA-CBS.
         solution : Solution
             Contains the solution found by CBS.
+        timeout : int
+            Maximum number of seconds that the solver is allowed to run
 
     Methods:
         preprocessing(self) -> None
@@ -684,11 +686,12 @@ class CBSSolver:
             Executes main CBS algorithm
     """
 
-    def __init__(self, instance_file : str, greedy : bool = False, makespan : bool = False, meta : bool = False, icbs : bool = False, threshold : int = 2, log_level : int = logging.INFO) -> None:
+    def __init__(self, instance_file : str, greedy : bool = False, makespan : bool = False, meta : bool = False, icbs : bool = False, threshold : int = 2, log_level : int = logging.INFO,timeout : int = inf) -> None:
         self.instance_file = instance_file
         self.meta = meta
         self.icbs = icbs
         self.meta_threshold = threshold
+        self.timeout = timeout
         self.cost_function : Cost = Cost.SOC
         self.solution = Solution()
         logger.setLevel(log_level)
@@ -792,7 +795,8 @@ class CBSSolver:
 
             logger.debug("While loop started")
 
-            while open_queue:
+            while open_queue and perf_counter() - start_time < self.timeout:
+
 
                 if not solution_nodes:
 
