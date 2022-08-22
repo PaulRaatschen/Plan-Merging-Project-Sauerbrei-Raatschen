@@ -1,22 +1,20 @@
 % Takes output of find_conflict.lp as input
+% Setup
+    % Determines ealiest collision
+    earliestEdgeCollision(TMIN) :- TMIN = #min{T : edgeCollision(_,_,T,_,_,_)}.
 
-% Determines ealiest collision
-earliestEdgeCollision(TMIN) :- TMIN = #min{T : edgeCollision(_,_,T,_,_,_)}.
+    {firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S): edgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S), earliestEdgeCollision(T0)} = 1.
+    firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R',R,bothmoving).
 
-{firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S): edgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S), earliestEdgeCollision(T0)} = 1.
-firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',S) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R',R,S).
-
-% Indipendenten object used for showing output
-conflict(A,B,C,D,E,F) :- firstedgeCollision(A,B,C,D,E,F).
+    % Indipendenten object used for showing output
+    conflict(A,B,C,D,E,F) :- firstedgeCollision(A,B,C,D,E,F).
 
 % Find an evasion step for one of the robots that frees the path for the other one
 
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',_),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+1, node((X,Y)).
-evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',_),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)). 
-
+evasionStep((X,Y),T+1,R,D) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving),R != R', not rPositionX(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+|X-X'|+|Y-Y'|, node((X,Y)).
 
 % Initialize the backtraking from the collision point 
-rBacktraking(R,(X,Y),T0-1) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',_), rPositionX(R,(X,Y),T0-1).
+rBacktraking(R,(X,Y),T0-1) :- firstedgeCollision((X0,Y0),(X0',Y0'),T0,R,R',bothmoving), rPositionX(R,(X,Y),T0-1).
 
 % Backtrack along the path (ideally only until an evasion step is found)
 rBacktraking(R,(X,Y),T) :- rBacktraking(R,(X',Y'),T+1), rPositionX(R,(X,Y),T). % not evasion_step(_,T0,_,_) with T0 < T (dont know how to do in clingo)
@@ -28,9 +26,9 @@ minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}.
 {chosenStep((X,Y),T,R,D): evasionStep((X,Y),T,R,D)} = 1 :- minDistance(D). 
 
 % Time that evading robot has to wait, either when he passes the point where the robot evaded, or when he passes the point where he had to stop
-lwaitTime(W) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
-lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rPositionX(R,(X',Y'),T0+1), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
-lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rPositionX(R,(X',Y'),T0), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
+lwaitTime(D) :- chosenStep((X,Y),T0,R,D), rPositionX(R,(X',Y'),T0-1), R != R' ,rPositionX(R',(X',Y'),TD), W = TD - T0,firstedgeCollision(_,_,_,R,R',bothmoving).
+%lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rPositionX(R,(X',Y'),T0+1), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
+%lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,rPositionX(R',(X',Y'),TD),rPositionX(R,(X',Y'),T0), W = TD - T0,firstedgeCollision(_,_,_,R,R',_).
 lwaitTime(0).
 
 % Longest of these times
