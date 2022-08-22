@@ -136,7 +136,7 @@ class Solution:
                     file.write(f"{occur}. ")
 
 
-    def get_initial_plans(self) -> List[Plan]:
+    def get_initial_plans(self) -> Dict[int,Plan]:
         ctl : Control
 
         def model_parser(model : Model,agent : int) -> bool:
