@@ -1,7 +1,8 @@
 """Imports"""
 from __future__ import annotations
 from bisect import insort
-from typing import Dict, List, Tuple, Union
+from enum import Enum
+from typing import Callable, Dict, List, Tuple, Union
 from clingo import Control, Number, Function, Symbol, Model, Supremum
 from clingo.solving import SolveResult, SolveHandle
 from time import perf_counter
@@ -36,25 +37,37 @@ SAPF_FILE : str = path.join(ENCODING_DIR,'single_agent_pf_cbs.lp')
 MAPF_FILE : str = path.join(ENCODING_DIR,'multi_agent_pf.lp')
 VALIADTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
 
+class Cost(Enum):
+    SOC = 1
+    MAKESPAN = 2
+    GREEDY_SOC = 3
+    GREEDY_MAKESPAN = 4
+
 class CTNode:
     """
     CTNode represents a node in the constraint tree of the conflict based search algorithm.
 
     Attributes:
         plans : Dict[int,Plan]
-            Stores current plans for all agents
+            Stores current plans for all agents.
         conflic_matrix : ConflictMatrix
-            Stores conflict count between all agents and current meta agents (MA-CBS only, else None)
+            Stores conflict count between all agents and current meta agents (MA-CBS only, else None).
         atoms : List[Symbol]
-            Stores preprocessing atoms describing the current instance file
+            Stores preprocessing atoms describing the current instance file.
         cost : int
-            Stores sum of costs of all current plans
+            Stores sum of costs of all current plans.
+        makespan : int
+            Stores maximum makespan of all current plans.
+        cost_function : Cost
+            Stores a cost enum value representative of the cost function.
         constraint_count : int
-            Stores number of constraints in all current plans
+            Stores number of constraints in all current plans.
         conflict_count : int
-            Stores nubmer of conflicts between all current plans
+            Stores nubmer of conflicts between all current plans.
         conflicts : List[Symbol]  
-            Stores conflic atoms between all current plans (ICBS)
+            Stores conflic atoms between all current plans (ICBS).
+        comp_value : Callable[...,int]
+            Returns a value used to compare the node to other nodes, dependent on the chosen cost function.
 
     Methods:
         __init__(self,plans : Dict[int,Plan]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0, constraint_count : int = 0) -> None
@@ -63,43 +76,56 @@ class CTNode:
         __lt__(self, other : CTNode) -> bool
         __le__(self, other : CTNode) -> bool
         low_level(self,agent : int) -> bool
-            Wrapper for low level search
+            Wrapper for low level search.
         low_level_ma(self,agent : int, horizon : int) -> bool
-            Computes paths for all agents in meta agent
+            Computes paths for all agents in meta agent.
         low_level_sa(self,agent : int, horizon : int) -> bool
-            Computes path for agent
+            Computes path for agent.
         validate_plans(self) -> bool
-            Determines conflicts between all current paths, returns True if no conflict are found else False
+            Determines conflicts between all current paths, returns True if no conflict are found else False.
         branch(self,conflict : Symbol, max_horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]
-            Branches the CTNode along a conflict into new CTNodes    
+            Branches the CTNode along a conflict into new CTNodes.  
         clear_constraints(self, agent : int) -> int
-            Deletes constraints in the plan of an agent
+            Deletes constraints in the plan of an agent.
     """
 
-    def __init__(self,plans : Dict[int,Plan]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0, constraint_count : int = 0) -> None:
+    def __init__(self,plans : Dict[int,Plan]=None, conflict_matrix : ConflictMatrix = None, atoms : List[Symbol]=None, cost : int = 0, makespan : int = 0, constraint_count : int = 0, cost_function : Cost = Cost.SOC) -> None:
         self.plans = plans if plans else {}
         self.conflic_matrix = conflict_matrix
         self.atoms = atoms
         self.cost = cost
+        self.makespan = makespan
+        self.cost_function : Cost = cost_function
         self.constraint_count = constraint_count
         self.conflict_count : int = 0
         self.conflicts : List[Symbol] = []
-
-    def __gt__(self, other : CTNode) -> bool:
-        if self.cost > other.cost:
+        self.comp_value : Callable[...,int]
+        if self.cost_function == Cost.SOC:
+            self.comp_value = lambda : self.cost
+        elif self.cost_function == Cost.MAKESPAN:
+            self.comp_value = lambda : self.makespan
+        elif self.cost_function == Cost.GREEDY_SOC:
+            self.comp_value = lambda : self.cost + self.conflict_count
+        else: 
+            self.comp_value = lambda : self.makespan + self.conflict_count
+        
+    def __gt__(self, other : CTNode) -> bool: 
+        if self.comp_value() > other.comp_value():
             return True 
-        elif self.cost == other.cost:
+        elif self.comp_value() == other.comp_value():
             return self.constraint_count > other.constraint_count
         else:
             return False
 
+
     def __ge__(self, other : CTNode) -> bool:
-        if self.cost > other.cost:
+        if self.comp_value() > other.comp_value():
             return True 
-        elif self.cost == other.cost:
+        elif self.comp_value() == other.comp_value():
             return self.constraint_count >= other.constraint_count
         else:
             return False
+
 
     def __lt__(self, other : CTNode) -> bool:
         return not self.__ge__(other)
@@ -199,8 +225,10 @@ class CTNode:
                                 if atom.name == 'goalReached' and atom.arguments[1]!=Supremum:
                                     cost += atom.arguments[1].number
                                     self.plans[atom.arguments[0].number].cost = atom.arguments[1].number
+                                    self.makespan = max(self.makespan,atom.arguments[1].number)
                     else:
                         cost = inf
+                        self.makespan = inf
 
         self.cost += cost
 
@@ -268,6 +296,8 @@ class CTNode:
         cost = inf if (ret and (not ret.satisfiable)) else step - 1
 
         self.plans[agent].cost = cost
+
+        self.makespan = max(self.makespan,cost)
 
         logger.debug(f"low level search terminated for agent {agent} with cost {cost}")
 
@@ -348,6 +378,7 @@ class CTNode:
         constraint2_type : str = 'meta_constraint' if self.conflic_matrix and self.conflic_matrix.is_meta_agent(agent2.number) else 'constraint'
         time : Number = conflict.arguments[4]
         old_cost : int = self.cost
+        old_makespan : int = self.makespan
         old_ccount : int = self.conflict_count
         old_plan : Plan = deepcopy(self.plans[agent1.number]) if not copy else None
         constraint1 : Symbol
@@ -369,7 +400,7 @@ class CTNode:
             constraint2 = Function(name=constraint2_type, arguments=[agent2,loc2,move2,time])
 
         if copy:
-            node1 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,old_ccount + 1)
+            node1 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,old_makespan,old_ccount + 1,self.cost_function)
         else:
             node1 = self 
             self.constraint_count += 1
@@ -379,7 +410,7 @@ class CTNode:
         if node1.cost <= old_cost and node1.conflict_count < old_ccount:
             return node1, None
         
-        node2 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,old_ccount + 1)
+        node2 = CTNode(deepcopy(self.plans),deepcopy(self.conflic_matrix),self.atoms,old_cost,old_makespan,old_ccount + 1,self.cost_function)
         node2.plans[agent2.number].constraints.append(constraint2)
         if not copy:
             node2.plans[agent1.number] = old_plan
@@ -390,7 +421,7 @@ class CTNode:
             return node2, None  
         else: return node1, node2
 
-    def icbs_branch(self, horizon : int) -> Union[Tuple[CTNode,CTNode,int],Tuple[CTNode,None,None]]:
+    def icbs_branch(self, horizon : int) -> Union[Tuple[CTNode,CTNode],Tuple[CTNode,None]]:
         """
         Branching funtion for ICBS. Examines every conflict in the current node and determines its cardinality.
         Will branch one conflict with priority order cardinal > semi-cardinal > bypass > non-cardinal.
@@ -411,12 +442,14 @@ class CTNode:
         node1 : CTNode
         node2 : CTNode
 
+        logger.debug("ICBS branch invoked")
+
         for conflict in self.conflicts:
             node1, node2 = self.branch(conflict,horizon,True)
             if node2:
-                if (node1.cost > self.cost and node2.cost > self.cost) or node1.conflict_count == 0 or node2.conflict_count == 0:
-                    return node1, node2, min(node1.cost,node2.cost)
-                elif node1.cost > self.cost or node2.cost > self.cost:
+                if (node1 > self and node2 > self) or node1.conflict_count == 0 or node2.conflict_count == 0:
+                    return node1, node2
+                elif node1 > self or node2 > self:
                     scnode1, scnode2 = node1, node2
                 else:
                     ncnode1, ncnode2 = node1, node2
@@ -424,11 +457,11 @@ class CTNode:
                 bypass = node1
             
             if scnode1:
-                return scnode1, scnode2, None
+                return scnode1, scnode2
             elif bypass:
-                return bypass, None, None
+                return bypass, None
             else:
-                return ncnode1, ncnode2, None
+                return ncnode1, ncnode2
 
     def clear_constraints(self, agent : int) -> int:
         """
@@ -633,8 +666,8 @@ class CBSSolver:
     Attributes:
         instance_file : str
             Path of the asprilo instance file that is to be solved.
-        greedy : bool
-            Activates suboptimal greedy search if True.
+        cost_function : Cost
+            Stores cost enum value representing the chosen cost function
         meta : bool
             Activates MA-CBS if True.
         icbs : bool
@@ -651,14 +684,21 @@ class CBSSolver:
             Executes main CBS algorithm
     """
 
-    def __init__(self, instance_file : str, greedy : bool = False,meta : bool = False, icbs : bool = False, threshold : int = 2, log_level : int = logging.INFO) -> None:
+    def __init__(self, instance_file : str, greedy : bool = False, makespan : bool = False, meta : bool = False, icbs : bool = False, threshold : int = 2, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
-        self.greedy = greedy
         self.meta = meta
         self.icbs = icbs
         self.meta_threshold = threshold
+        self.cost_function : Cost = Cost.SOC
         self.solution = Solution()
         logger.setLevel(log_level)
+        if makespan:
+            if greedy:
+                self.cost_function = Cost.GREEDY_MAKESPAN
+            else:
+                self.cost_function = Cost.MAKESPAN
+        elif greedy:
+            self.cost_function = Cost.GREEDY_SOC
 
     def preprocessing(self) -> None:
         """
@@ -720,7 +760,6 @@ class CBSSolver:
         current : CTNode
         node1 : CTNode
         node2 : CTNode
-        lower_bound : int = 0
 
         try:
 
@@ -732,7 +771,7 @@ class CBSSolver:
 
             max_iter = self.solution.num_of_nodes * 2 
 
-            root = CTNode(atoms=self.solution.instance_atoms,plans=self.solution.plans)
+            root = CTNode(atoms=self.solution.instance_atoms,plans=self.solution.plans,cost_function=self.cost_function)
 
             if self.meta:
                 root.conflic_matrix = ConflictMatrix(self.solution.agents)
@@ -758,9 +797,6 @@ class CBSSolver:
                 if not solution_nodes:
 
                     current = open_queue.pop(0)
-
-                    if self.icbs and current.cost < lower_bound:
-                        continue
 
                     branch : bool = True
 
@@ -788,15 +824,11 @@ class CBSSolver:
                                     if current.validate_plans():
                                         solution_nodes.append(current)
                                         break
-                                    if self.greedy:
-                                        open_queue.insert(0,current)
-                                    else:
-                                        insort(open_queue,current)
+                                    insort(open_queue,current)
 
                     if branch:
                         if self.icbs:
-                            node1, node2, low = current.icbs_branch(max_iter)
-                            #lower_bound = low if low else lower_bound
+                            node1, node2 = current.icbs_branch(max_iter)
                         else:
                             node1, node2 = current.branch(current.conflicts[0],max_iter) 
                         if node1.conflict_count == 0:
@@ -805,13 +837,8 @@ class CBSSolver:
                         elif node2 and node2.conflict_count == 0:
                             solution_nodes.append(node2) 
                             break
-
-                        if self.greedy:
-                            open_queue.insert(0,node1)
-                            if node2: open_queue.insert(0,node2)
-                        else:
-                            insort(open_queue,node1)
-                            if node2: insort(open_queue,node2)
+                        insort(open_queue,node1)
+                        if node2: insort(open_queue,node2)
                         
                 else:
                     break
@@ -829,7 +856,9 @@ class CBSSolver:
 
             self.solution.plans = best_solution.plans
 
-            self.solution.cost = best_solution.cost
+            self.solution.get_soc()
+
+            self.solution.get_makespan()
 
             self.solution.satisfied = True
 
