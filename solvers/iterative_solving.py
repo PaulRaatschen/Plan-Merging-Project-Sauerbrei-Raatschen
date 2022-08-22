@@ -276,14 +276,15 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("instance", type=str)
-    parser.add_argument("--edgeIterations",default=40, type=int)
-    parser.add_argument("--vertexIterations",default=60, type=int)
+    parser.add_argument("--edgeIterations",default=100, type=int)
+    parser.add_argument("--vertexIterations",default=100, type=int)
     parser.add_argument("-b", "--benchmark", default=False, action="store_true")
     parser.add_argument("-d", "--debug", default=False, action="store_true")
 
 
     args : Namespace = parser.parse_args()
     solution : Solution = IterativeSolver(args.instance,args.edgeIterations,args.vertexIterations,logging.DEBUG if args.debug else logging.INFO).solve()
+    solution.save("plan.lp")
 
     if args.benchmark:
         logger.info(f'Execution time : {solution.execution_time}s')

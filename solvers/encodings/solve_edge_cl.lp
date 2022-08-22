@@ -35,11 +35,11 @@ minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}.
 
 % Time that evading robot has to wait, either when he passes the point where the robot evaded, or when he passes the point where he had to stop
 % Wait until the non evading agent past the space where the evading agent evaded
-lwaitTime(W) :- chosenStep((X,Y),T0,R,D), position(R,(X',Y'),T0-1), R != R' ,position(R',(X',Y'),TD), W = TD - T0,edgeConflict(_,_,_,R,R'), not iswaiting(R).
+lwaitTime(W) :- chosenStep((X,Y),T0,R,D), position(R,(X',Y'),T0-1), R != R' ,position(R',(X',Y'),TD), W = TD - T0,edgeConflict(_,_,_,R,R').
 % Wait until the non evading agent is on the last time on the spot where the evading agent would be one step after not evading
-lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,position(R',(X',Y'),TD),position(R,(X',Y'),T0+1), W = TD - T0,edgeConflict(_,_,_,R,R'), not iswaiting(R).
+lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,position(R',(X',Y'),TD),position(R,(X',Y'),T0+1), W = TD - T0,edgeConflict(_,_,_,R,R').
 % Wait until the non evading agent is on the spot where the evading agent would be if not evading
-lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,position(R',(X',Y'),TD),position(R,(X',Y'),T0), W = TD - T0,edgeConflict(_,_,_,R,R'),iswaiting(R).
+lwaitTime(W) :- chosenStep((X,Y),T0,R,D),  R != R' ,position(R',(X',Y'),TD),position(R,(X',Y'),T0), W = TD - T0,edgeConflict(_,_,_,R,R').
 lwaitTime(0).
 
 % Longest of these times

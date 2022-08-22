@@ -238,17 +238,17 @@ class GenerateInstance:
         f.close()
 
 
-def createInstance(XSize, YSize, nRobots, nRooms):
-    args = argparse.Namespace()
+    def createInstance(XSize, YSize, nRobots, nRooms):
+        args = argparse.Namespace()
 
-    args.width = XSize
-    args.height = YSize
-    args.numberOfRobots = nRobots
-    args.mapType = "Rooms"
-    args.verticalLines = 0
-    args.horizontalLines = 0
-    args.numberOfRooms = nRooms
-    GenerateInstance(args)    
+        args.width = XSize
+        args.height = YSize
+        args.numberOfRobots = nRobots
+        args.mapType = "Rooms"
+        args.verticalLines = 0
+        args.horizontalLines = 0
+        args.numberOfRooms = nRooms
+        GenerateInstance(args)    
 
 
 if __name__ == "__main__":
