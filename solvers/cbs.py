@@ -883,11 +883,14 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--benchmark", default=False, action="store_true")
     parser.add_argument("-g", "--greedy", default=False, action="store_true")
     parser.add_argument("-m", "--meta", default=False, action="store_true")
+    parser.add_argument("-i", "--icbs", default=False, action="store_true")
+    parser.add_argument("-ms", "--makespan", default=False, action="store_true")
+    parser.add_argument("--timeout", default=inf, type=int)
     parser.add_argument("--debug", default=False, action="store_true")
-    parser.add_argument("--treshold",default=2,type=int)
+    parser.add_argument("--threshold",default=2,type=int)
     args : Namespace = parser.parse_args()
 
-    solution =  CBSSolver(args.instance,args.greedy,args.meta, args.threshold,logging.DEBUG if args.debug else logging.INFO).solve()
+    solution =  CBSSolver(args.instance,args.greedy,args.makespan,args.meta,args.icbs,args.threshold,logging.DEBUG if args.debug else logging.INFO,timeout=args.timeout).solve()
 
     if solution.satisfied:
         solution.save('plan.lp')
