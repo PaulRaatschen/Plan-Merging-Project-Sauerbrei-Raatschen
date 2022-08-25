@@ -25,7 +25,9 @@ class GenerateInstance:
         
         self.Field = [([0] * self.width) for x in range(self.height)]
 
-        self.placeWalls()
+        while self.placeWalls() == 0:
+            self.Field = [([0] * self.width) for x in range(self.height)]
+
 
         self.placeRobots()
         
@@ -73,7 +75,8 @@ class GenerateInstance:
                         self.Field[y][i] = 0
                         y = y + (self.height-self.horizontalLines)//(self.horizontalLines) + 1
         elif self.mapType == "Rooms":
-            
+            roomPlaceAttempts = 0
+
             rooms = []
             for i in range(0,self.numberOfRooms):
 
@@ -81,7 +84,10 @@ class GenerateInstance:
 
                 while True:
                     
+                    roomPlaceAttempts += 1
 
+                    if roomPlaceAttempts > self.numberOfRooms * 20:
+                        return 0
                     
 
                     x1 = random.randint(0,self.width-1)
@@ -174,6 +180,7 @@ class GenerateInstance:
                         if(self.Field[doorplacement][right-1] == 0 and self.Field[doorplacement][right+1] == 0):
                             self.Field[doorplacement][right] = 0
                             break
+        return 1
                     
     def placeRobots(self):
         #Place Robots

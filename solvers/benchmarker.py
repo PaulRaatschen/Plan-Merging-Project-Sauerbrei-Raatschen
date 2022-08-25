@@ -126,7 +126,7 @@ else:
         for iteration in range(1,5):
             print("     Iteration:" + str(iteration))
             modinstanceName = instanceName + str(complexity) + "." + str(iteration)
-            GenerateInstance.createInstance(15,15,complexity,0)
+            GenerateInstance.createInstance(15,15,5,complexity)
 
 
             print("         IterativeSolving-Start")
@@ -135,7 +135,7 @@ else:
             spdf = pd.DataFrame({'instance': [modinstanceName],'tag':[args.tag],'solver':["IS"],'makespan': [itSolution.get_makespan()],'norm_makespan': [itSolution.get_norm_makespan()],'soc' : [itSolution.get_soc()],'norm_soc' : [itSolution.get_norm_soc()],'total_moves' : [itSolution.get_total_moves()],'norm_total_moves' : [itSolution.get_norm_total_moves()],'exec_time' : [itSolution.execution_time],'satisfied' : [itSolution.satisfied]})
             spdf.to_csv(FILENAME, mode='a', index=False, header = not path.exists(FILENAME))
 
-            #save_instance_info(instanceName,itSolution)
+            save_instance_info(instanceName,itSolution)
 
             print("         PrioritizedPlanning-Start")
 

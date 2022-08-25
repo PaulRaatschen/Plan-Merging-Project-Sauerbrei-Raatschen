@@ -13,6 +13,10 @@ edgeConflict(P,P',T,R,R') :- firstEdgeConflict(P',P,T,R',R).
 
 iswaiting(R):- edge(P,P',T,R,R'), position(R,P,T), position(R,P,T+1).
 
+lastTimeAgent(R,P,LT):- LT = #max{T : position(R,_,T)}, position(R,P,LT),edgeConflict(_,_,_,R,_).
+isAtGoal(R):- lastTimeAgent(R,P,LT), edgeConflict(P,_,_,R,_).
+
+
 % Initialize the backtraking from the collision point 
 rBacktraking(R,(X,Y),T0-1) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'), position(R,(X,Y),T0-1).
 
@@ -21,8 +25,8 @@ rBacktraking(R,(X,Y),T) :- rBacktraking(R,(X',Y'),T+1), position(R,(X,Y),T). % n
 
 % Find an evasion step for one of the robots that frees the path for the other one
 
-evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+1, node((X,Y)).
-evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)). 
+evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+1, node((X,Y)), not isAtGoal(R').
+evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)), not isAtGoal(R').
 
 
 
@@ -64,6 +68,7 @@ timeToMoveBack(1..|T|):- chosenStep(_,T,_,_), T<0.
 #show position(R,(X',Y'),T0+W + 1) : chosenStep((X,Y),T0,R,D), waitTime(W), position(R,(X',Y'),T0-1), T0 >=0.
 % Continue his path
 #show position(R,(X',Y'),T) : chosenStep((X,Y),T0,R,D), waitTime(W), position(R,(X',Y'),T'),T' >= T0, T = T'+W+2,T0 >=0.
+#show test(R): isAtGoal(R).
 
 
 
