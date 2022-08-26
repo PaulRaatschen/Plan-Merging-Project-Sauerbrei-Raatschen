@@ -337,7 +337,7 @@ if __name__ == "__main__":
 
     """Command line argument parsing"""
     parser : ArgumentParser = ArgumentParser()
-    parser.add_argument("instance", type=str)
+    parser.add_argument("instance", type=str,help="Path to asprilo instance file.")
     parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
     parser.add_argument("-o", "--optimize", default=False, action="store_true",help="Enables initial agent schedule optimization.")
     parser.add_argument("--backtrack",default=False, action="store_true",help="Enables backtracking if the current ordering does not lead to a solution.")
