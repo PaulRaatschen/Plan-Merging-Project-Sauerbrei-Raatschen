@@ -25,6 +25,7 @@ For example:
 
 ## Usage
 To run a solver on an asprilo instance: 
+(Tested with Python 3.9, requires [clingo](https://potassco.org/clingo/) package)
 ```bash
 python <SOLVER>.py <INSTANCE> 
 ```
