@@ -338,12 +338,11 @@ if __name__ == "__main__":
     """Command line argument parsing"""
     parser : ArgumentParser = ArgumentParser()
     parser.add_argument("instance", type=str)
-    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-    parser.add_argument("-o", "--optimize", default=False, action="store_true")
-    parser.add_argument("-v", "--verbose", default=False, action="store_true")
-    parser.add_argument("--backtrack",default=False, action="store_true")
-    parser.add_argument("--maxdepth",default=10,type=int)
-    parser.add_argument("--debug", default=False, action="store_true")
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
+    parser.add_argument("-o", "--optimize", default=False, action="store_true",help="Enables initial agent schedule optimization.")
+    parser.add_argument("--backtrack",default=False, action="store_true",help="Enables backtracking if the current ordering does not lead to a solution.")
+    parser.add_argument("--maxdepth",default=10,type=int,help="Set the maximum amount of schedule changes for backtracking.")
+    parser.add_argument("--debug", default=False, action="store_true",help="Makes solving process verbose for debugging purposes.")
     args : Namespace = parser.parse_args()
 
     solution = PrioritizedPlanningSolver(args.instance,args.optimize,args.backtrack,args.maxdepth,logging.DEBUG if args.debug else logging.INFO).solve()
@@ -352,5 +351,7 @@ if __name__ == "__main__":
 
     if args.benchmark:
             logger.info(f'Execution time : {solution.execution_time:.2f}s')
-            logger.info(f'Total model cost : {solution.get_soc()}')
+            logger.info(f'Sum of costs : {solution.get_soc()}')
+            logger.info(f'Sum of costs : {solution.get_makespan()}')
+            logger.info(f'Total moves : {solution.get_total_moves()}')
     

@@ -886,14 +886,14 @@ if __name__ == '__main__':
     """Command line argument parsing"""
     parser : ArgumentParser = ArgumentParser()
     parser.add_argument("instance", type=str)
-    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-    parser.add_argument("-g", "--greedy", default=False, action="store_true")
-    parser.add_argument("-m", "--meta", default=False, action="store_true")
-    parser.add_argument("-i", "--icbs", default=False, action="store_true")
-    parser.add_argument("-ms", "--makespan", default=False, action="store_true")
-    parser.add_argument("--timeout", default=inf, type=int)
-    parser.add_argument("--debug", default=False, action="store_true")
-    parser.add_argument("--threshold",default=2,type=int)
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
+    parser.add_argument("-g", "--greedy", default=False, action="store_true",help="Enables suboptimal greedy search.")
+    parser.add_argument("-m", "--meta", default=False, action="store_true",help="Enables meta agent CBS.")
+    parser.add_argument("-i", "--icbs", default=False, action="store_true",help="Enables improves CBS.")
+    parser.add_argument("-ms", "--makespan", default=False, action="store_true",help="Set optimization goal from sum of costs to makespan.")
+    parser.add_argument("--timeout", default=inf, type=int, action="Sets maximum time in seconds that the search is allowed to run.")
+    parser.add_argument("--debug", default=False, action="store_true",help="Makes solving process verbose for debugging purposes.")
+    parser.add_argument("--threshold",default=2,type=int,help="Sets conflict count treshold for meta agent merging (MA-CBS).")
     args : Namespace = parser.parse_args()
 
     solution =  CBSSolver(args.instance,args.greedy,args.makespan,args.meta,args.icbs,args.threshold,logging.DEBUG if args.debug else logging.INFO,timeout=args.timeout).solve()
@@ -902,7 +902,11 @@ if __name__ == '__main__':
         solution.save('plan.lp')
 
     if args.benchmark:
-        logger.info(f"Execution time: {solution.execution_time:.3f}s")
+        logger.info(f'Execution time : {solution.execution_time:.2f}s')
+        logger.info(f'Sum of costs : {solution.get_soc()}')
+        logger.info(f'Sum of costs : {solution.get_makespan()}')
+        logger.info(f'Total moves : {solution.get_total_moves()}')
+    
 
     
 

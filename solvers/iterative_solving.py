@@ -284,10 +284,10 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("instance", type=str)
-    parser.add_argument("--edgeIterations",default=80, type=int)
-    parser.add_argument("--vertexIterations",default=100, type=int)
-    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-    parser.add_argument("-d", "--debug", default=False, action="store_true")
+    parser.add_argument("--edgeIterations",default=80, type=int,help="Sets the maximum number of edge conflicts to be solved.")
+    parser.add_argument("--vertexIterations",default=100, type=int,help="Sets the maximum number of vertex conflicts to be solved.")
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
+    parser.add_argument("-d", "--debug", default=False, action="store_true",help="Makes solving process verbose for debugging purposes.")
 
 
     args : Namespace = parser.parse_args()
