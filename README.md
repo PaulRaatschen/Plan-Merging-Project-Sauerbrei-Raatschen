@@ -1,4 +1,4 @@
-# Plan-Merging-Project-Sauerbrei-Raatschen
+# Plan-Merging-Project
 
 ## About
 
