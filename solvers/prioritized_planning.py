@@ -31,7 +31,7 @@ WORKING_DIR : str = path.abspath(path.dirname(__file__))
 ENCODING_DIR : str = path.join(WORKING_DIR,'encodings')
 PREPROCESSING_FILE : str = path.join(ENCODING_DIR,'setup.lp')
 SAPF_FILE : str = path.join(ENCODING_DIR,'single_agent_pf.lp')
-CONFLICT_DETECTION_FILE : str = path.join(ENCODING_DIR,'conflict_detection.lp')
+CONFLICT_DETECTION_FILE : str = path.join(ENCODING_DIR,'validate.lp')
 SAPF_NC_FILE : str = path.join(ENCODING_DIR,'single_agent_pf_nc.lp')
 
 class PrioritizedPlanningSolver:
@@ -183,6 +183,8 @@ class PrioritizedPlanningSolver:
 
         logger.debug(f'Planning for agent {agent}')
 
+        self.solution.clear_plan(agent)
+
         ctl = Control(arguments=['-Wnone',f'-c r={agent}'])
 
         ctl.load(SAPF_FILE)
@@ -240,18 +242,20 @@ class PrioritizedPlanningSolver:
 
             for index, agent in  enumerate(ordering[finished_index:]):
 
-                logger.debug(f'Current robot planning {index}')
-
                 if not self.plan_path(agent):
                     satisfied = False
                     logger.debug(f'No solution found for agent {agent}')
 
-                    if self.backtrack and index > 0:
-                        finished_index = index - 1
-                        pt.update_pos(pt.partial_perm_index(ordering[:index],num_of_agents),orderings,num_of_agents)
-                        agent_to_swap = ordering[index-1]
-                        ordering[index-1] = ordering[index]
-                        ordering[index] = agent_to_swap
+                    if self.backtrack:
+                        finished_index = finished_index + index - 1
+                        if finished_index == 0:
+                            logger.debug(f'No solution possible')
+                            self.backtrack = False
+                            break
+                        pt.update_pos(pt.partial_perm_index(ordering[:finished_index+1],num_of_agents),orderings,num_of_agents)
+                        agent_to_swap = ordering[finished_index]
+                        ordering[finished_index] = ordering[finished_index+1]
+                        ordering[finished_index+1] = agent_to_swap
                         
                         perm_index = pt.update_pos([pt.permutation_index(ordering)],orderings,num_of_agents)
 
@@ -262,14 +266,9 @@ class PrioritizedPlanningSolver:
                             else:
                                 finished_index = 0
                                 old_order : List[int] = ordering
-                                ordering = pt.index_to_perm(index,num_of_agents)
+                                ordering = pt.index_to_perm(perm_index,num_of_agents)
                                 while old_order[finished_index] == ordering[finished_index] and finished_index < num_of_agents:
                                     finished_index += 1
-                                for ag in range(finished_index,num_of_agents):
-                                    self.solution.clear_plan(ag)
-
-                        else:
-                            self.solution.clear_plan(agent_to_swap) 
 
                         logger.debug(f'New ordering : {ordering}')
                         
