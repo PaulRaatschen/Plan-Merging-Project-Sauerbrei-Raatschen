@@ -122,15 +122,24 @@ class Solution:
         self.satisfied : bool = False
 
     def clear_plans(self) -> None:
+        """
+        Clears the position and occurs atoms from all plans in the solution object
+        """
         for plan in self.plans.values():
             plan.clear()
 
 
     def clear_plan(self,agent : int) -> None:
+        """
+        Clears the position and occurs atoms from the plan of agent
+        """
         self.plans[agent].clear()
 
 
     def save(self, filepath : str) -> None:
+        """
+        Saves the occurs atoms in plans to filepath.lp
+        """
         with open(filepath, 'w', encoding='utf-8') as file:
             for init in self.inits:
                 file.write(f"{init}. ")
@@ -140,6 +149,16 @@ class Solution:
 
 
     def get_initial_plans(self) -> Dict[int,Plan]:
+        """
+        Computes the shortest plans for all agents without conflict evasion.
+
+        Side effet:
+            Updates initial plans with the obtained plans
+
+        Returns:
+            Dictionary of all agents (key) and their initial plan (value)
+        """
+
         ctl : Control
 
         def model_parser(model : Model,agent : int) -> bool:
@@ -170,8 +189,17 @@ class Solution:
         return self.initial_plans
         
 
-    def get_initial_plan_info(self) -> Dict[str,Union[List[Plan],int]]:
-        result : Dict[str,Union[List[Plan],int]] = { 'plans' : {}, 'soc': 0, 'makespan' : 0 }
+    def get_initial_plan_info(self) -> Dict[str,Union[Dict[int,Plan],int]]:
+        """
+        Computes the initial plans if not already present and returns additional soc and makespan information
+
+        Side effect:
+            inital plans are updated if not aready present
+
+        Returns:
+            Dictionary containing initial plan dictionary, soc and makespan of initial plans
+        """
+        result : Dict[str,Union[Dict[int,Plan],int]] = { 'plans' : {}, 'soc': 0, 'makespan' : 0 }
         soc : int = 0
         makespan : int = 0
 
@@ -190,6 +218,9 @@ class Solution:
         return result
 
     def get_soc(self) -> int:
+        """
+        Returns sum of cost for the plans of the solution
+        """
         if self.cost > 0:
             return self.cost
         else:
@@ -200,7 +231,9 @@ class Solution:
 
 
     def get_makespan(self) -> int:
-
+        """
+        Returns makespan for the plans of the solution
+        """
         if self.makespan == 0:
             for plan in self.plans.values():
                 self.makespan = max(self.makespan,plan.cost)
@@ -208,6 +241,9 @@ class Solution:
         return self.makespan
 
     def get_total_moves(self) -> int:
+        """
+        Returns the total number of moves for the plans of the solution
+        """
         total_moves : int = 0
 
         for plan in self.plans.values():
@@ -216,6 +252,9 @@ class Solution:
         return total_moves
 
     def get_norm_total_moves(self) -> float:
+        """
+        Returns total numer of moves divided by the total number of moves of the initial plans
+        """
         if not self.initial_plans.values():
             self.get_initial_plans()
         
@@ -227,20 +266,31 @@ class Solution:
         return self.get_total_moves() / total
 
     def get_norm_soc(self) -> float:
+        """
+        Returns sum of cost divided by the sum of costs of the initial plans
+        """
         info : Dict[str,Union[List[Plan],int]] = self.get_initial_plan_info()
 
         return self.get_soc() / info['soc']
 
     def get_norm_makespan(self) -> float:
+        """
+        Returns makespan divided by the makespan of the initial plans
+        """
         info : Dict[str,Union[List[Plan],int]] = self.get_initial_plan_info()
 
         return self.get_makespan() / info['makespan']
     
     def get_density(self) -> float:
+        """
+        Returns the number of occupied nodes (robot or shelf) divided by total number of nodes
+        """
         return len(self.agents) * 2 / (self.num_of_nodes)
 
     def save_initial_plans(self,filepath : str) -> None:
-
+        """
+        Saves the occurs atoms of the initial plans to filepath.lp
+        """
         if not self.initial_plans:
             self.get_initial_plans()
 
