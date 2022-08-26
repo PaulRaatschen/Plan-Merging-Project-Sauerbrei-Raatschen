@@ -255,9 +255,7 @@ class IterativeSolver:
         self.vertex_cl_found = False
         self.conflicts = []
         for atom in model.symbols(shown=True):
-            #print(atom)
             if str(atom.name) == 'position':
-                
                 agent : int = atom.arguments[0].number
                 self.solution.plans[agent].positions.append(atom)
             elif atom.arguments[0].name == 'edge':
@@ -272,7 +270,6 @@ class IterativeSolver:
     def model_solving_parser(self,model : Model) -> bool:
         self.solution.clear_plans()
         for atom in model.symbols(shown=True):
-            if(atom.name == 'test'):print(atom)
             self.solution.plans[atom.arguments[0].number].positions.append(atom)
         return False
             
@@ -281,8 +278,8 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("instance", type=str)
-    parser.add_argument("--edgeIterations",default=8, type=int)
-    parser.add_argument("--vertexIterations",default=8, type=int)
+    parser.add_argument("--edgeIterations",default=80, type=int)
+    parser.add_argument("--vertexIterations",default=100, type=int)
     parser.add_argument("-b", "--benchmark", default=False, action="store_true")
     parser.add_argument("-d", "--debug", default=False, action="store_true")
 
