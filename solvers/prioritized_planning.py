@@ -89,7 +89,13 @@ class PrioritizedPlanningSolver:
                 elif atom.name == 'numOfNodes':
                     self.solution.num_of_nodes = atom.arguments[0].number
                 elif atom.name == 'goal':
-                    self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].goal = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                elif atom.name == 'position':
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].initial = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(initial=atom)
                 else:
                     self.solution.instance_atoms.append(atom)
 
@@ -190,6 +196,9 @@ class PrioritizedPlanningSolver:
         ctl.load(SAPF_FILE)
 
         with ctl.backend() as backend:
+            fact = backend.add_atom(self.solution.plans[agent].initial)
+            backend.add_rule([fact])
+
             for atom in self.solution.instance_atoms:
                 fact = backend.add_atom(atom)
                 backend.add_rule([fact])
@@ -248,7 +257,7 @@ class PrioritizedPlanningSolver:
 
                     if self.backtrack:
                         finished_index = finished_index + index - 1
-                        if finished_index == 0:
+                        if finished_index < 0:
                             logger.debug(f'No solution possible')
                             self.backtrack = False
                             break
@@ -269,7 +278,10 @@ class PrioritizedPlanningSolver:
                                 ordering = pt.index_to_perm(perm_index,num_of_agents)
                                 while old_order[finished_index] == ordering[finished_index] and finished_index < num_of_agents:
                                     finished_index += 1
-
+                                for ag in ordering[finished_index+1:]:
+                                    self.solution.clear_plan(ag)
+                        else:
+                            self.solution.clear_plan(agent_to_swap)
                         logger.debug(f'New ordering : {ordering}')
                         
                         break

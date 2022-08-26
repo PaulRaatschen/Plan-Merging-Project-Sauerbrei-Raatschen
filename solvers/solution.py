@@ -30,18 +30,21 @@ class Plan:
             Sum of costs for the path.
         goal : Symbol
             Goal atom of the agent.
+        initial : Symbol
+            Position atom at time 0 of the agent
 
     Methods:  
         clear(self)
             Deletes path and sets cost to zero.
     """
 
-    def __init__(self,occurs : List[Symbol] = None, positions : List[Symbol] = None, constraints : List[Symbol] = None, cost : int = 0, goal : Symbol = None):
+    def __init__(self,occurs : List[Symbol] = None, positions : List[Symbol] = None, constraints : List[Symbol] = None, cost : int = 0, goal : Symbol = None, initial : Symbol = None):
         self.occurs = occurs if occurs else []
         self.positions = positions if positions else []
         self.constraints = constraints if constraints else []
         self.cost = cost
         self.goal = goal
+        self.initial = initial
 
     def clear(self) -> None:
         """
@@ -149,12 +152,14 @@ class Solution:
 
         if not self.initial_plans:
             for agent in self.agents:
-                self.initial_plans[agent] = Plan(goal=self.plans[agent].goal)
+                self.initial_plans[agent] = Plan(goal=self.plans[agent].goal,initial=self.plans[agent].initial)
                 ctl = Control(arguments=['-Wnone',f'-c r={agent}']) 
                 ctl.load(SAPF_FILE)
 
                 with ctl.backend() as backend:
                     fact = backend.add_atom(self.initial_plans[agent].goal)
+                    backend.add_rule([fact])
+                    fact = backend.add_atom(self.initial_plans[agent].initial)
                     backend.add_rule([fact])
                     for atom in self.instance_atoms:
                         fact = backend.add_atom(atom)

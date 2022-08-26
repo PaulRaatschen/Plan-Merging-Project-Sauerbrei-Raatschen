@@ -194,7 +194,7 @@ class CTNode:
                 backend.add_rule([fact])
 
             for agt in meta_agent:
-                for constraint in self.plans[agt].constraints + [Function(name='planning',arguments=[Number(agt)]), self.plans[agt].goal]:
+                for constraint in self.plans[agt].constraints + [Function(name='planning',arguments=[Number(agt)]), self.plans[agt].goal,self.plans[agt].initial]:
                     fact = backend.add_atom(constraint)
                     backend.add_rule([fact])
 
@@ -275,7 +275,7 @@ class CTNode:
         ctl.load(SAPF_FILE)
 
         with ctl.backend() as backend:
-            for atom in self.atoms + plan.constraints + [plan.goal]:
+            for atom in self.atoms + plan.constraints + [plan.goal,plan.initial]:
                 fact = backend.add_atom(atom)
                 backend.add_rule([fact])
         
@@ -726,7 +726,13 @@ class CBSSolver:
                 elif atom.name == 'numOfNodes':
                     self.solution.num_of_nodes = atom.arguments[0].number
                 elif atom.name == 'goal':
-                    self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].goal = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                elif atom.name == 'position':
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].initial = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(initial=atom)
                 else:
                     self.solution.instance_atoms.append(atom)
 

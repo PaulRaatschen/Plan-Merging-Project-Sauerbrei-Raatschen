@@ -53,7 +53,13 @@ class IterativeSolver:
                 elif atom.name == 'numOfNodes':
                     self.solution.num_of_nodes = atom.arguments[0].number
                 elif atom.name == 'goal':
-                    self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].goal = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                elif atom.name == 'position':
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].initial = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(initial=atom)
                 else:
                     self.solution.instance_atoms.append(atom)
 
