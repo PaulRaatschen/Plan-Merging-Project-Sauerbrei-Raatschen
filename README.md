@@ -8,7 +8,7 @@ This is a student project at the University of Potsdam about multi agent path fi
 - `Benchmarks/` contains the asprilo instance files used for benchmarking.
 - `Solvers/` contains our plan merging implementations, asp encodings and additional python scripts for benchmarking.
 - `Report/` contains our project report.
-- `Presentation` contains the slides for our project presentation.
+- `Presentation/` contains the slides for our project presentation.
 
 ## Iterative Solving
 
