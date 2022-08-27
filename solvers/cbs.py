@@ -194,7 +194,7 @@ class CTNode:
                 backend.add_rule([fact])
 
             for agt in meta_agent:
-                for constraint in self.plans[agt].constraints + [Function(name='planning',arguments=[Number(agt)]), self.plans[agt].goal]:
+                for constraint in self.plans[agt].constraints + [Function(name='planning',arguments=[Number(agt)]), self.plans[agt].goal,self.plans[agt].initial]:
                     fact = backend.add_atom(constraint)
                     backend.add_rule([fact])
 
@@ -275,7 +275,7 @@ class CTNode:
         ctl.load(SAPF_FILE)
 
         with ctl.backend() as backend:
-            for atom in self.atoms + plan.constraints + [plan.goal]:
+            for atom in self.atoms + plan.constraints + [plan.goal,plan.initial]:
                 fact = backend.add_atom(atom)
                 backend.add_rule([fact])
         
@@ -726,7 +726,13 @@ class CBSSolver:
                 elif atom.name == 'numOfNodes':
                     self.solution.num_of_nodes = atom.arguments[0].number
                 elif atom.name == 'goal':
-                    self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].goal = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(goal=atom)
+                elif atom.name == 'position':
+                    if atom.arguments[0].number in self.solution.plans:
+                        self.solution.plans[atom.arguments[0].number].initial = atom
+                    else: self.solution.plans[atom.arguments[0].number] = Plan(initial=atom)
                 else:
                     self.solution.instance_atoms.append(atom)
 
@@ -814,12 +820,12 @@ class CBSSolver:
                             current.conflic_matrix.merge(agent1,agent2)
                             if self.icbs:
                                 current.conflic_matrix.clear_cmatrix()
-                                for agent in set(current.conflic_matrix.meta_agents):
-                                    ag : int = agent[0] if type(agent) == tuple else agent
-                                    if current.clear_constraints(ag):
-                                        current.low_level(ag,max_iter)
+                                for agent in self.solution.agents:
+                                    if current.clear_constraints(agent):
+                                        current.low_level(agent,max_iter)
                                 if current.validate_plans():
                                     solution_nodes.append(current)
+                                    logger.debug("Merge Reset")
                                     break
                                 open_queue = [current]
                             else:
@@ -879,15 +885,15 @@ if __name__ == '__main__':
 
     """Command line argument parsing"""
     parser : ArgumentParser = ArgumentParser()
-    parser.add_argument("instance", type=str)
-    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-    parser.add_argument("-g", "--greedy", default=False, action="store_true")
-    parser.add_argument("-m", "--meta", default=False, action="store_true")
-    parser.add_argument("-i", "--icbs", default=False, action="store_true")
-    parser.add_argument("-ms", "--makespan", default=False, action="store_true")
-    parser.add_argument("--timeout", default=inf, type=int)
-    parser.add_argument("--debug", default=False, action="store_true")
-    parser.add_argument("--threshold",default=2,type=int)
+    parser.add_argument("instance", type=str,help="Path to asprilo instance file.")
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
+    parser.add_argument("-g", "--greedy", default=False, action="store_true",help="Enables suboptimal greedy search.")
+    parser.add_argument("-m", "--meta", default=False, action="store_true",help="Enables meta agent CBS.")
+    parser.add_argument("-i", "--icbs", default=False, action="store_true",help="Enables improves CBS.")
+    parser.add_argument("-ms", "--makespan", default=False, action="store_true",help="Set optimization goal from sum of costs to makespan.")
+    parser.add_argument("--timeout", default=inf, type=int, help="Sets maximum time in seconds that the search is allowed to run.")
+    parser.add_argument("--debug", default=False, action="store_true",help="Makes solving process verbose for debugging purposes.")
+    parser.add_argument("--threshold",default=2,type=int,help="Sets conflict count treshold for meta agent merging (MA-CBS).")
     args : Namespace = parser.parse_args()
 
     solution =  CBSSolver(args.instance,args.greedy,args.makespan,args.meta,args.icbs,args.threshold,logging.DEBUG if args.debug else logging.INFO,timeout=args.timeout).solve()
@@ -896,7 +902,11 @@ if __name__ == '__main__':
         solution.save('plan.lp')
 
     if args.benchmark:
-        logger.info(f"Execution time: {solution.execution_time:.3f}s")
+        logger.info(f'Execution time : {solution.execution_time:.2f}s')
+        logger.info(f'Sum of costs : {solution.get_soc()}')
+        logger.info(f'Makespan : {solution.get_makespan()}')
+        logger.info(f'Total moves : {solution.get_total_moves()}')
+    
 
     
 
