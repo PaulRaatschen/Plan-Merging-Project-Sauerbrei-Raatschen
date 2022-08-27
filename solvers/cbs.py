@@ -820,12 +820,12 @@ class CBSSolver:
                             current.conflic_matrix.merge(agent1,agent2)
                             if self.icbs:
                                 current.conflic_matrix.clear_cmatrix()
-                                for agent in set(current.conflic_matrix.meta_agents):
-                                    ag : int = agent[0] if type(agent) == tuple else agent
-                                    if current.clear_constraints(ag):
-                                        current.low_level(ag,max_iter)
+                                for agent in self.solution.agents:
+                                    if current.clear_constraints(agent):
+                                        current.low_level(agent,max_iter)
                                 if current.validate_plans():
                                     solution_nodes.append(current)
+                                    logger.debug("Merge Reset")
                                     break
                                 open_queue = [current]
                             else:
