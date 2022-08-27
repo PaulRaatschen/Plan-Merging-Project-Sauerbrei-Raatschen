@@ -126,7 +126,7 @@ else:
         for iteration in range(1,5):
             print("     Iteration:" + str(iteration))
             modinstanceName = instanceName + str(complexity) + "." + str(iteration)
-            GenerateInstance.createInstance(3,3,complexity,0)
+            GenerateInstance.createInstance(5,5,complexity,"Random",5)
 
 
             print("         IterativeSolving-Start")

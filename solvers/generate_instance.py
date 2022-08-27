@@ -17,6 +17,8 @@ class GenerateInstance:
         self.horizontalLines = args.horizontalLines
         self.verticalLines = args.verticalLines
         self.numberOfRooms = args.numberOfRooms
+        self.numberOfWalls = args.numberOfWalls
+        self.RobotPositions = []
 
 
         self.generate()
@@ -75,7 +77,14 @@ class GenerateInstance:
                         self.Field[y][i] = 0
                         y = y + (self.height-self.horizontalLines)//(self.horizontalLines) + 1
         elif self.mapType == "Random":
-            for i in range(0,self.)
+            for i in range(0,self.numberOfWalls):
+                    while(True):
+                        x = random.randint(0,self.width-1)
+                        y = random.randint(0,self.height-1)
+                        if(self.Field[x][y] != 1):
+                            self.Field[x][y] = 1
+                            break
+                        
         elif self.mapType == "Rooms":
             roomPlaceAttempts = 0
 
@@ -196,27 +205,58 @@ class GenerateInstance:
                 
                 if self.Field[randomY][randomX] == 0:
                         self.Field[randomY][randomX] = ["R" + str(i),"empty"]
+                        self.RobotPositions.append([randomX,randomY])
                         break
     
+    def reachableSpace(self,x,y,reachableSpaces):
+            dx = x+1
+            if(dx < self.width):
+                if(not [dx,y] in reachableSpaces):
+                    if(self.Field[y][dx] != 1):
+                        reachableSpaces.append([dx,y])
+                        self.reachableSpace(dx,y,reachableSpaces)
+            dx = x-1
+            if(dx > -1):
+                if(not [dx,y] in reachableSpaces):
+                    if(self.Field[y][dx] != 1):
+                        reachableSpaces.append([dx,y])
+                        self.reachableSpace(dx,y,reachableSpaces)
+
+            dy = y+1
+            if(dy < self.height):
+                if(not [x,dy] in reachableSpaces):
+                    if(self.Field[dy][x] != 1):
+                        reachableSpaces.append([x,dy])
+                        self.reachableSpace(x,dy,reachableSpaces)
+            dy = y-1
+            if(dy > -1):
+                if(not [x,dy] in reachableSpaces):
+                    if(self.Field[dy][x] != 1):
+                        reachableSpaces.append([x,dy])
+                        self.reachableSpace(x,dy,reachableSpaces)
+
     def placeShelves(self):
         #Place Shelves
-
-        for i in range(0,self.numberOfRobots):
-            
+        agentCount = -1
+        for i in self.RobotPositions:
+            agentCount += 1
+            possibleSpaces = [[i[0],i[1]]]
+            self.reachableSpace(i[0],i[1],possibleSpaces)
             while True:
+                pick = random.choice(possibleSpaces)
+                x = pick[0]
+                y = pick[1]
 
-                randomX = random.randint(0,self.width-1)
-                randomY = random.randint(0,self.height-1)
-                
 
-                if self.Field[randomY][randomX] == 1: 
-                    continue
-                if self.Field[randomY][randomX] == 0:
-                        self.Field[randomY][randomX] = ["empty","S" + str(i)]
+                if self.Field[y][x] == 0:
+                        self.Field[y][x] = ["empty","S" + str(agentCount)]
                         break
-                elif self.Field[randomY][randomX][1] == "empty":
-                        self.Field[randomY][randomX][1] = ("S" + str(i))
+                elif self.Field[y][x][1] == "empty":
+                        self.Field[y][x][1] = ("S" + str(agentCount))
                         break
+    
+    
+
 
     def saveField(self):
         textFile = "#program base.\n\n%init\n"
@@ -247,16 +287,17 @@ class GenerateInstance:
         f.close()
 
 
-    def createInstance(XSize, YSize, nRobots, nRooms):
+    def createInstance(XSize, YSize, nRobots, roomType, complexity):
         args = argparse.Namespace()
 
         args.width = XSize
         args.height = YSize
         args.numberOfRobots = nRobots
-        args.mapType = "Rooms"
-        args.verticalLines = 0
-        args.horizontalLines = 0
-        args.numberOfRooms = nRooms
+        args.mapType = roomType
+        args.verticalLines = complexity
+        args.horizontalLines = complexity
+        args.numberOfRooms = complexity
+        args.numberOfWalls = complexity
         GenerateInstance(args)    
 
 

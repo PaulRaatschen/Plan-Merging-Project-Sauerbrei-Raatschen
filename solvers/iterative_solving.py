@@ -234,6 +234,8 @@ class IterativeSolver:
             if(self.edge_cl_found and self.edge_iter > 0):
                 logger.debug("SolveVertex created edge collision")                
                 self.solve_edge()
+                continue
+
 
             self.vertex_iter = self.vertex_iter -1
 
