@@ -74,6 +74,8 @@ class GenerateInstance:
 
                         self.Field[y][i] = 0
                         y = y + (self.height-self.horizontalLines)//(self.horizontalLines) + 1
+        elif self.mapType == "Random":
+            for i in range(0,self.)
         elif self.mapType == "Rooms":
             roomPlaceAttempts = 0
 
@@ -273,6 +275,7 @@ if __name__ == "__main__":
     parser.add_argument("-vLines","--verticalLines",default = 3 ,type=int)
 
     parser.add_argument("-nRooms","--numberOfRooms",default = 3 ,type=int)
+    parser.add_argument("-nWalls","--numberOfWalls",default = 3 ,type=int)
 
 
     args = parser.parse_args()

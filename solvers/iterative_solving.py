@@ -1,4 +1,5 @@
 from copy import deepcopy
+from msvcrt import SEM_NOALIGNMENTFAULTEXCEPT
 from sys import stdout
 from clingo import Control, Model, Symbol
 from time import perf_counter
@@ -72,6 +73,21 @@ class IterativeSolver:
         ctl.solve(on_model=preprocessing_parser)
 
     def postprocessing(self) -> None:
+        #One last time check for collisions, if there are any, instance in unsatisfied
+        ctl = Control(arguments=["-Wnone"])
+
+        ctl.load(CONFLICT_DETECTION_FILE)
+
+        with ctl.backend() as backend:
+            for plan in self.solution.plans.values():
+                for atom in plan.positions:
+                    fact = backend.add_atom(atom)
+                    backend.add_rule([fact])
+
+        ctl.ground([("base",[])])
+
+        ctl.solve(on_model=self.conflict_parser)
+
 
         def postprocessing_parser(model : Model) -> bool:
 
@@ -103,7 +119,7 @@ class IterativeSolver:
             self.solution.makespan = max(self.solution.makespan,cost)
             plan.cost = cost
 
-        self.solution.satisfied = self.conflict_step
+        self.solution.satisfied =not( self.vertex_cl_found or self.edge_cl_found )
 
     def solve(self) -> Solution:
 
@@ -122,6 +138,7 @@ class IterativeSolver:
         self.postprocessing()
 
         self.solution.execution_time = perf_counter()-start_t
+
 
         logger.debug("Solving finished")
 
@@ -255,13 +272,16 @@ class IterativeSolver:
         self.vertex_cl_found = False
         self.conflicts = []
         for atom in model.symbols(shown=True):
+            
             if str(atom.name) == 'position':
                 agent : int = atom.arguments[0].number
                 self.solution.plans[agent].positions.append(atom)
             elif atom.arguments[0].name == 'edge':
+
                 self.edge_cl_found = True
                 self.conflicts.append(atom)
             elif atom.arguments[0].name == 'vertex':
+
                 self.vertex_cl_found = True
                 self.conflicts.append(atom)
 
@@ -286,6 +306,6 @@ if __name__ == "__main__":
 
     args : Namespace = parser.parse_args()
     solution : Solution = IterativeSolver(args.instance,args.edgeIterations,args.vertexIterations,logging.DEBUG if args.debug else logging.INFO).solve()
-    solution.save("plan.lp")
+    solution.save("plan.lp"); print(solution.satisfied)
     if args.benchmark:
         logger.info(f'Execution time : {solution.execution_time}s')
