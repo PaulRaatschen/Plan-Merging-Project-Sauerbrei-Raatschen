@@ -278,8 +278,8 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("instance", type=str)
-    parser.add_argument("--edgeIterations",default=80, type=int)
-    parser.add_argument("--vertexIterations",default=100, type=int)
+    parser.add_argument("--edgeIterations",default=30, type=int)
+    parser.add_argument("--vertexIterations",default=30, type=int)
     parser.add_argument("-b", "--benchmark", default=False, action="store_true")
     parser.add_argument("-d", "--debug", default=False, action="store_true")
 
