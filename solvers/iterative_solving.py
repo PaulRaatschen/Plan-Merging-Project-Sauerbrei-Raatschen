@@ -27,9 +27,34 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 class IterativeSolver:
+    """
+    Implements a solver object which executes the iterative solving algorithm.
+
+    Attributes:
+        instance_file : str
+            Path to the asprilo instance file that is to ve solved.
+        edge_iter : int
+            Decreasing value for how many edge iterations are allowed to be done
+        max_edge_iter : int
+            Maximum number of edge iterations allowed to be done
+        vertex_iter : int
+            Decreasing value for how many vertex iterations are allowed to be done
+        max_vertex_iter : int
+            Maximum number of vertex iterations allowed to be done
+        conflict_step: bool
+            Signifier if the saved conflicts are current
+        edge_cl_found: bool
+            Signifier if in the conflict step, an edge collison was detected
+        vertex_cl_found: bool
+            Signifier if in the conflict step, a vertex collison was detected
+        conflicts: List[Symbol]
+            List of all currently found conflicts
+        solution : Solution
+            Stores the solution obtained by iterative solving.
+    """
 
     def __init__(self,instance : str, edge_iter : int = 120, vertex_iter : int = 80, log_level : int = logging.INFO):
-    
+        
         self.instance_file = instance
         self.edge_iter = edge_iter
         self.max_edge_iter = edge_iter
@@ -37,14 +62,24 @@ class IterativeSolver:
         self.conflict_step : bool = False
         self.edge_cl_found : bool = False
         self.vertex_cl_found : bool = False
-        self.iteration : int = 0
         self.conflicts : List[Symbol] = []
         self.solution = Solution()
         logger.setLevel(log_level)
 
     def preprocessing(self) -> None:
+        """
+        Parses the instance file and initalized solver with information about the instance.
+
+        Side effects:
+            solution.inits : Updated with init atoms of instance file for the resulting plan.
+            solution.agents : Updated with list contaning all agents in the instance file.
+            solution.num_of_nodes : Updated with number of nodes of the instance.
+            solution.plans : Plans for all agents are initialized with their goal.
+            solution.instance_atoms : Updated with atoms, describing the instance.
+        """
 
         def preprocessing_parser(model : Model) -> bool:
+            """Parse function for model created by preprocessing asp file"""
 
             for atom in model.symbols(shown=True):
                 if atom.name == 'init':
@@ -73,7 +108,17 @@ class IterativeSolver:
         ctl.solve(on_model=preprocessing_parser)
 
     def postprocessing(self) -> None:
-        #One last time check for collisions, if there are any, instance in unsatisfied
+        """
+        Search for conflict one last time to ensure satisfiability and update the data into an asprillo suitable form
+
+        Side effects:
+            self.conflicts. List of conflicts gets updated
+            solution.plans : Plans for all agents are saved
+            solution.cost: Cost of the plan gets calculated
+            solution.makespan: Makespan of the plan gets calculated
+            solution.satisfied: States if the final plan satisfies the constraints
+        """
+
         ctl = Control(arguments=["-Wnone"])
 
         ctl.load(CONFLICT_DETECTION_FILE)
@@ -122,29 +167,40 @@ class IterativeSolver:
         self.solution.satisfied =not( self.vertex_cl_found or self.edge_cl_found )
 
     def solve(self) -> Solution:
+        """
+        Executes the iterative solving algorithm.
+
+        Side effect: 
+            Updates plans in solution and execution time. 
+
+        Returns:
+            Solution object with the solution obtained by iterative solving.
+        """
+
 
         logger.debug("Solve invoked")
-
         start_t : float = perf_counter()
 
         self.preprocessing()
-
         self.solution.plans = deepcopy(self.solution.get_initial_plans())
 
         self.solve_edge()
-
         self.solve_vertex()
 
         self.postprocessing()
-
         self.solution.execution_time = perf_counter()-start_t
-
-
         logger.debug("Solving finished")
 
         return self.solution
 
     def solve_edge(self) -> None:
+        """
+        Searches for conflicts and if edge conflicts are present, solves them, if edge iterations are left.
+        Only stops once no edge conflict is found or no iterations are left.
+
+        Side effect: 
+            Updates plans in solution, updates list of conflicts, decreases edge_iter.
+        """
 
         logger.debug("SolveEdge invoked")
 
@@ -208,6 +264,14 @@ class IterativeSolver:
         logger.debug('Edge iterations exeeded')
 
     def solve_vertex(self):
+        """
+        Searches for conflicts and if vertex conflicts are present, solves them, if vertex iterations are left.
+        If an edge conflict gets found, pause solve_vertex and handle solve_edge if iterations are left.
+        Only stops if vertex iterations ran out, or no conflicts are left
+
+        Side effect: 
+            Updates plans in solution, updates list of conflicts, decreases vertex_iter.
+        """
 
         logger.debug("SolveVertex invoked")
         
@@ -297,7 +361,7 @@ class IterativeSolver:
             
 
 if __name__ == "__main__":
-
+    """Command line argument parsing"""
     parser = ArgumentParser()
     parser.add_argument("instance", type=str)
     parser.add_argument("--edgeIterations",default=30, type=int)
@@ -308,6 +372,8 @@ if __name__ == "__main__":
 
     args : Namespace = parser.parse_args()
     solution : Solution = IterativeSolver(args.instance,args.edgeIterations,args.vertexIterations,logging.DEBUG if args.debug else logging.INFO).solve()
-    solution.save("plan.lp"); print(solution.satisfied)
+    
+    solution.save("plan.lp")
+    
     if args.benchmark:
         logger.info(f'Execution time : {solution.execution_time}s')
