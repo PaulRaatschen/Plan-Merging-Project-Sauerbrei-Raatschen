@@ -825,12 +825,11 @@ class CBSSolver:
                                         current.low_level(agent,max_iter)
                                 if current.validate_plans():
                                     solution_nodes.append(current)
-                                    logger.debug("Merge Reset")
                                     break
                                 open_queue = [current]
                             else:
                                 current.low_level(agent1, max_iter)
-                                if current.cost < inf:
+                                if current.comp_value() < inf:
                                     if current.validate_plans():
                                         solution_nodes.append(current)
                                         break
@@ -841,15 +840,16 @@ class CBSSolver:
                             node1, node2 = current.icbs_branch(max_iter)
                         else:
                             node1, node2 = current.branch(current.conflicts[0],max_iter) 
-                        if node1.conflict_count == 0:
-                            solution_nodes.append(node1) 
-                            break
-                        elif node2 and node2.conflict_count == 0:
-                            solution_nodes.append(node2) 
-                            break
-                        insort(open_queue,node1)
-                        if node2: insort(open_queue,node2)
-                        
+                        if node1.comp_value() < inf:
+                            if node1.conflict_count == 0:
+                                solution_nodes.append(node1) 
+                                break
+                            insort(open_queue,node1)
+                        if node2 and node2.comp_value() < inf:
+                            if node2.conflict_count == 0:
+                                solution_nodes.append(node2) 
+                                break
+                            insort(open_queue,node2)                   
                 else:
                     break
 
