@@ -158,3 +158,5 @@ instance,xsize,ysize,blocked_nodes,density,number_of_agents
 X5Y5BNR,5,5,5,0.5,5
 instance,xsize,ysize,blocked_nodes,density,number_of_agents
 X5Y5BNR,5,5,5,0.5,5
+instance,xsize,ysize,blocked_nodes,density,number_of_agents
+9r_singleOpening.lp,11,11,10,0.16216216216216217,9

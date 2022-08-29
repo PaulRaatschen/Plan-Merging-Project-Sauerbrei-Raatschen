@@ -18,7 +18,7 @@ parser.add_argument("-gi", "--GenerateInstance", default=False, action="store_tr
 args = parser.parse_args()
 instanceName : str = path.basename(args.instance)
 initial_plans : Dict[int,Plan]
-cbs_timeout : int = 300
+cbs_timeout : int = 999999999
 isSolution : Solution
 ppSolution : Solution
 cbsSolution : Solution

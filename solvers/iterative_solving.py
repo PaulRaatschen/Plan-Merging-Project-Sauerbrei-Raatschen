@@ -363,11 +363,11 @@ class IterativeSolver:
 if __name__ == "__main__":
     """Command line argument parsing"""
     parser = ArgumentParser()
-    parser.add_argument("instance", type=str)
-    parser.add_argument("--edgeIterations",default=30, type=int)
-    parser.add_argument("--vertexIterations",default=30, type=int)
-    parser.add_argument("-b", "--benchmark", default=False, action="store_true")
-    parser.add_argument("-d", "--debug", default=False, action="store_true")
+    parser.add_argument("instance", type=str,help="Path to asprilo instance file")
+    parser.add_argument("--edgeIterations",default=30, type=int,help="Set the maximum amount of edge solvings to be done, default 30")
+    parser.add_argument("--vertexIterations",default=30, type=int,help="Set the maximum amount of vertex solvings to be done, default 30")
+    parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
+    parser.add_argument("-d", "--debug", default=False, action="store_true",help ="Makes solving process verbose for debugging purposes.")
 
 
     args : Namespace = parser.parse_args()
