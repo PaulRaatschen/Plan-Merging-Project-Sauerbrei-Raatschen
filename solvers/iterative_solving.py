@@ -376,4 +376,7 @@ if __name__ == "__main__":
     solution.save("plan.lp")
     
     if args.benchmark:
-        logger.info(f'Execution time : {solution.execution_time}s')
+        logger.info(f'Execution time : {solution.execution_time:.2f}s')
+        logger.info(f'Sum of costs : {solution.get_soc()}')
+        logger.info(f'Makespan : {solution.get_makespan()}')
+        logger.info(f'Total moves : {solution.get_total_moves()}')
