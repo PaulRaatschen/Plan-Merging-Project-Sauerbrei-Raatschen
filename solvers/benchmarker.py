@@ -58,6 +58,13 @@ if(args.GenerateInstance == False):
     ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP"],'makespan': [ppSolution.get_makespan()],'norm_makespan': [ppSolution.get_norm_makespan()],'soc' : [ppSolution.get_soc()],'norm_soc' : [ppSolution.get_norm_soc()],'total_moves' : [ppSolution.get_total_moves()],'norm_total_moves' : [ppSolution.get_norm_total_moves()],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
     ppdf.to_csv(FILENAME, mode='a', index=False, header = False)
 
+    print("PrioritizedPlanning-optimized-Start")
+
+    ppSolution = PrioritizedPlanningSolver(args.instance,backtrack=True,log_level=logging.CRITICAL,optimize=True).solve()
+    ppSolution.initial_plans = initial_plans
+    ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP-OPT"],'makespan': [ppSolution.get_makespan()],'norm_makespan': [ppSolution.get_norm_makespan()],'soc' : [ppSolution.get_soc()],'norm_soc' : [ppSolution.get_norm_soc()],'total_moves' : [ppSolution.get_total_moves()],'norm_total_moves' : [ppSolution.get_norm_total_moves()],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
+    ppdf.to_csv(FILENAME, mode='a', index=False, header = False)
+
     print("CBS-Soc-Start")
     cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,timeout=cbs_timeout).solve()
     cbsSolution.initial_plans = initial_plans
