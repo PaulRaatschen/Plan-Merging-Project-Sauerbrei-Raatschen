@@ -1,6 +1,8 @@
 """Imports"""
 from math import factorial
 from enum import Enum
+from operator import index
+from turtle import position
 from typing import Union, List
 
 """
@@ -149,7 +151,7 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
     while middle > low and middle < high:
         if status == Range.OVER:
             low = middle
-            middle = low + (high - low) // 2
+            middle = low + (high - low) // 2 + 1
         elif status == Range.UNDER:
             high = middle
             middle = low + (high-low) // 2
@@ -161,13 +163,19 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
         
     if status == Range.UNDER:
         if mrange[0] - irange[-1] == 1:
-            mrange[0] = irange[0]
+            if len(mrange) == 2:
+                mrange[0] = irange[0]
+            else:
+                mrange.insert(0,irange[0])
         else:
             positions.insert(middle, irange)
     
     elif status == Range.OVER:
         if irange[0] - mrange[-1] == 1:
-            mrange[-1] = irange[-1]
+            if len(mrange) == 2:
+                mrange[-1] = irange[-1]
+            else:
+                mrange.append(irange[-1])
         else:
             positions.insert(middle+1,irange)
             
@@ -182,9 +190,15 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
         
         if (status == Range.UNDER and positions[index][0] - irange[-1] == 1) or status == Range.UNDERIN:
             index_to_del.append(index)
-            mrange[-1] = positions[index][-1]
+            if len(mrange) == 2:
+                mrange[-1] = positions[index][-1]
+            else:
+                mrange.append(position[index][-1])
         else :
-            mrange[-1] = irange[-1]
+            if len(mrange) == 2:
+                mrange[-1] = irange[-1]
+            else:
+                mrange.append(irange[-1])
             
         for i in index_to_del:
             del positions[i]
@@ -200,9 +214,15 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
         
         if (status == Range.OVER and irange[0] - positions[index][-1] == 1) or status == Range.OVERIN:
             index_to_del.append(index)
-            mrange[0] = positions[index][0]
+            if len(mrange) == 2:
+                mrange[0] = positions[index][0]
+            else:
+                mrange.insert(0,positions[index][0])
         else :
-            mrange[0] = irange[0]
+            if len(mrange) == 2:
+                mrange[0] = irange[0]
+            else:
+                mrange.insert(0,irange[0])
             
         for i in index_to_del:
             del positions[i]
