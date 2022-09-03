@@ -136,9 +136,9 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
         None if an integer range was inserted or the inserted integer was not part of a range in positions.
         Else integer that was not part of a range prior to the function call. 
     """
-    middle : int = len(positions) // 2
     high : int = len(positions) - 1
     low : int = 0
+    middle : int = (high+low) // 2
     index_to_del : List[int] = []
     maximum = factorial(size) - 1
     
@@ -148,15 +148,14 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
     
     status : Range = _in_range(irange, positions[middle])
     
-    while middle > low and middle < high:
+    while high >= low:
         if status == Range.OVER:
-            low = middle
-            middle = low + (high - low) // 2 + 1
+            low = middle + 1
         elif status == Range.UNDER:
-            high = middle
-            middle = low + (high-low) // 2
+            high = middle - 1 
         else:
             break
+        middle = (high+low) // 2
         status = _in_range(irange, positions[middle])
         
     mrange : List[int] = positions[middle]
@@ -167,6 +166,11 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
                 mrange[0] = irange[0]
             else:
                 mrange.insert(0,irange[0])
+            if middle > 0 and irange[0]-positions[middle-1][-1] == 1:
+                mrange[0] = positions[middle-1][0]
+                del positions[middle-1]
+        elif middle > 0 and irange[0]-positions[middle-1][-1] == 1:
+            positions[middle-1][0] += 1
         else:
             positions.insert(middle, irange)
     
@@ -176,6 +180,12 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
                 mrange[-1] = irange[-1]
             else:
                 mrange.append(irange[-1])
+            if middle < len(positions) - 1 and positions[middle+1][0]-irange[-1] == 1:
+                mrange[-1] = positions[middle+1][-1]
+                del positions[middle+1]
+
+        elif middle < len(positions) - 1 and positions[middle+1][0]-irange[-1] == 1:
+            positions[middle+1][0] -= 1
         else:
             positions.insert(middle+1,irange)
             
