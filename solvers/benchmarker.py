@@ -25,7 +25,7 @@ cbsSolution : Solution
 FILENAME : str = 'results.csv' 
 PATHNAME : str = 'benchmark-data\\'
 FILEPATH : str = PATHNAME+FILENAME
-allCBS: bool = False
+allCBS: bool = True
 
 
 def save_instance_info(name : str, solution : Solution):
@@ -50,23 +50,23 @@ if(args.GenerateInstance == False):
     itSolution = IterativeSolver(args.instance,log_level=logging.CRITICAL).solve()
     initial_plans = itSolution.get_initial_plans()
     spdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["IS"],'makespan': [itSolution.get_makespan()],'norm_makespan': [itSolution.get_norm_makespan()],'soc' : [itSolution.get_soc()],'norm_soc' : [itSolution.get_norm_soc()],'total_moves' : [itSolution.get_total_moves()],'norm_total_moves' : [itSolution.get_norm_total_moves()],'exec_time' : [itSolution.execution_time],'satisfied' : [itSolution.satisfied]})
-    spdf.to_csv(FILEPATH, mode='a', index=False, header = not path.exists(FILEPATH))
+    #spdf.to_csv(FILEPATH, mode='a', index=False, header = not path.exists(FILEPATH))
 
     save_instance_info(instanceName,itSolution)
 
     print("PrioritizedPlanning-Start")
 
-    ppSolution = PrioritizedPlanningSolver(args.instance,backtrack=True,log_level=logging.CRITICAL).solve()
-    ppSolution.initial_plans = initial_plans
-    ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP"],'makespan': [ppSolution.get_makespan()],'norm_makespan': [ppSolution.get_norm_makespan()],'soc' : [ppSolution.get_soc()],'norm_soc' : [ppSolution.get_norm_soc()],'total_moves' : [ppSolution.get_total_moves()],'norm_total_moves' : [ppSolution.get_norm_total_moves()],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
-    ppdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+    #ppSolution = PrioritizedPlanningSolver(args.instance,backtrack=True,log_level=logging.CRITICAL).solve()
+    #ppSolution.initial_plans = initial_plans
+    #ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP"],'makespan': [ppSolution.get_makespan()],'norm_makespan': [ppSolution.get_norm_makespan()],'soc' : [ppSolution.get_soc()],'norm_soc' : [ppSolution.get_norm_soc()],'total_moves' : [ppSolution.get_total_moves()],'norm_total_moves' : [ppSolution.get_norm_total_moves()],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
+    #ppdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     print("PrioritizedPlanning-optimized-Start")
 
-    ppSolution = PrioritizedPlanningSolver(args.instance,backtrack=True,log_level=logging.CRITICAL,optimize=True).solve()
-    ppSolution.initial_plans = initial_plans
-    ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP-OPT"],'makespan': [ppSolution.get_makespan()],'norm_makespan': [ppSolution.get_norm_makespan()],'soc' : [ppSolution.get_soc()],'norm_soc' : [ppSolution.get_norm_soc()],'total_moves' : [ppSolution.get_total_moves()],'norm_total_moves' : [ppSolution.get_norm_total_moves()],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
-    ppdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+    #ppSolution = PrioritizedPlanningSolver(args.instance,backtrack=True,log_level=logging.CRITICAL,optimize=True).solve()
+    #ppSolution.initial_plans = initial_plans
+    #ppdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["PP-OPT"],'makespan': [ppSolution.get_makespan()],'norm_makespan': [ppSolution.get_norm_makespan()],'soc' : [ppSolution.get_soc()],'norm_soc' : [ppSolution.get_norm_soc()],'total_moves' : [ppSolution.get_total_moves()],'norm_total_moves' : [ppSolution.get_norm_total_moves()],'exec_time' : [ppSolution.execution_time],'satisfied' : [ppSolution.satisfied]})
+    #ppdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     
     if(allCBS):

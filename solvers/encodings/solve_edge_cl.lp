@@ -24,9 +24,10 @@
     rBacktraking(R,(X,Y),T) :- rBacktraking(R,(X',Y'),T+1), position(R,(X,Y),T). % not evasion_step(_,T0,_,_) with T0 < T (dont know how to do in clingo)
 
     % Find an evasion step for one of the robots that frees the path for the other one
-    evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+1, node((X,Y)), not isAtGoal(R').
-    evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)), not isAtGoal(R').
+    evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|+1, node((X,Y)), not isAtGoal(R') .
+    evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 0, D = |T0-T|, node((X,Y)), not isAtGoal(R') .
 
+        evasionStep((X,Y),T+1,R,D) :- edgeConflict((X0,Y0),(X0',Y0'),T0,R,R'),R != R', not position(R',(X,Y),_), rBacktraking(R,(X',Y'),T), |X-X'|+|Y-Y'| = 1, D = |T0-T|, node((X,Y)), isAtGoal(R'),isAtGoal(R) .
     % Determine the evasion step with the smallest distance to the collision point in order to minimize waiting time
     minDistance(DMAX) :- DMAX = #min{D : evasionStep((X,Y),T,R,D)}. 
 

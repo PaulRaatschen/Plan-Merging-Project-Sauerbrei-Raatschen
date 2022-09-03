@@ -55,7 +55,7 @@ class PrioritizedPlanningSolver:
 
     """
 
-    def __init__(self,instance_file : str, optimize : bool = False, backtrack : bool = False, maxdepth : int = 10, log_level : int = logging.INFO) -> None:
+    def __init__(self,instance_file : str, optimize : bool = False, backtrack : bool = False, maxdepth : int = 30, log_level : int = logging.INFO) -> None:
         self.instance_file = instance_file
         self.optimize = optimize
         self.backtrack = backtrack
@@ -341,7 +341,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--benchmark", default=False, action="store_true",help="Outputs execution time and solution statistics.")
     parser.add_argument("-o", "--optimize", default=False, action="store_true",help="Enables initial agent schedule optimization.")
     parser.add_argument("--backtrack",default=False, action="store_true",help="Enables backtracking if the current ordering does not lead to a solution.")
-    parser.add_argument("--maxdepth",default=10,type=int,help="Set the maximum amount of schedule changes for backtracking.")
+    parser.add_argument("--maxdepth",default=30,type=int,help="Set the maximum amount of schedule changes for backtracking.")
     parser.add_argument("--debug", default=False, action="store_true",help="Makes solving process verbose for debugging purposes.")
     args : Namespace = parser.parse_args()
 

@@ -3,12 +3,12 @@
     lastTime(LT):- LT = #max{T : position(_,_,T)}.
     lastTimeAgent(R,P,LT):- LT = #max{T : position(R,_,T)}, position(R,P,LT).
     
-    pastGoal(R,P,TT+1):- lastTimeAgent(R,P,TT), TT< LT, lastTime(LT).
+    pastGoal(R,P,TT+1):- lastTimeAgent(R,P,TT), TT<= LT, lastTime(LT).
     pastGoal(R,P,T+1):- lastTimeAgent(R,P,TT), pastGoal(R,P,T),TT<=T ,T< LT, lastTime(LT).
 
 
 % Vertex Conflict
-conflict(vertex,R,R',(X,Y),T) :- position(R,(X,Y),T), position(R',(X,Y),T), R!=R', position(R,(X0,Y0),T-1),position(R',(X0',Y0'),T-1).
+conflict(vertex,R,R',(X,Y),T) :- position(R,(X,Y),T), position(R',(X,Y),T), R!=R', position(R,(X0,Y0),T-1),position(R',(X0',Y0'),T-1), not position(R,(X0',Y0'),T+1),not position(R',(X0,Y0),T+1).
 
 % Edge Conflict
     %Both agents switch position
