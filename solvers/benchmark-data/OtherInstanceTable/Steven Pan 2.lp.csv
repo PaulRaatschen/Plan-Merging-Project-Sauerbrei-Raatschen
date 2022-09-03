@@ -1,0 +1,4 @@
+solver,makespan,soc,total_moves,exec_time,satisfied
+IS,135.000,1166.000,315,76.465,False
+PP,22.000,353.000,285,12.500,True
+PP-OPT,24.000,339.000,291,1.480,True

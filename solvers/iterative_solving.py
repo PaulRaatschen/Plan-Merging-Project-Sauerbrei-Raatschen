@@ -41,8 +41,6 @@ class IterativeSolver:
             Decreasing value for how many vertex iterations are allowed to be done
         max_vertex_iter : int
             Maximum number of vertex iterations allowed to be done
-        conflict_step: bool
-            Signifier if the saved conflicts are current
         edge_cl_found: bool
             Signifier if in the conflict step, an edge collison was detected
         vertex_cl_found: bool
@@ -59,7 +57,6 @@ class IterativeSolver:
         self.edge_iter = edge_iter
         self.max_edge_iter = edge_iter
         self.vertex_iter = vertex_iter
-        self.conflict_step : bool = False
         self.edge_cl_found : bool = False
         self.vertex_cl_found : bool = False
         self.conflicts : List[Symbol] = []
@@ -208,29 +205,29 @@ class IterativeSolver:
 
         while self.edge_iter > 0:
 
-            if not self.conflict_step:
 
-                self.conflict_step = True
 
-                ctl = Control(arguments=["-Wnone"])
+            self.conflict_step = True
 
-                ctl.load(CONFLICT_DETECTION_FILE)
+            ctl = Control(arguments=["-Wnone"])
 
-                with ctl.backend() as backend:
+            ctl.load(CONFLICT_DETECTION_FILE)
+
+            with ctl.backend() as backend:
                     for plan in self.solution.plans.values():
                         for atom in plan.positions:
                             fact = backend.add_atom(atom)
                             backend.add_rule([fact])
 
-                ctl.ground([("base",[])])
+            ctl.ground([("base",[])])
 
-                ctl.solve(on_model=self.conflict_parser)
+            ctl.solve(on_model=self.conflict_parser)
 
             self.edge_iter = self.edge_iter -1
 
             #if an edge collision was found
             if self.edge_cl_found:
-                self.conflict_step = False
+
 
                 #solve edge collision
                 ctl = Control(arguments=["-Wnone"])
@@ -277,27 +274,28 @@ class IterativeSolver:
         
         while self.vertex_iter > 0:
 
-            if not self.conflict_step:
+            
 
-                self.conflict_step = True
+
                 
-                ctl = Control(arguments=["-Wnone"])
+            ctl = Control(arguments=["-Wnone"])
 
-                ctl.load(CONFLICT_DETECTION_FILE)
+            ctl.load(CONFLICT_DETECTION_FILE)
 
-                with ctl.backend() as backend:
+            with ctl.backend() as backend:
                     for plan in self.solution.plans.values():
                         for atom in plan.positions:
                             fact = backend.add_atom(atom)
                             backend.add_rule([fact])
 
-                ctl.ground([("base",[])])
+            ctl.ground([("base",[])])
 
-                ctl.solve(on_model=self.conflict_parser)
+            ctl.solve(on_model=self.conflict_parser)
 
             if(self.edge_cl_found and self.edge_iter > 0):
                 logger.debug("SolveVertex created edge collision")                
                 self.solve_edge()
+
                 continue
 
 
@@ -305,7 +303,7 @@ class IterativeSolver:
 
             #if an vertex collision was found
             if self.vertex_cl_found:
-                self.conflict_step=False
+
                 #solve vertex collision
                 ctl = Control(arguments=["-Wnone"])
 
@@ -338,7 +336,6 @@ class IterativeSolver:
         self.vertex_cl_found = False
         self.conflicts = []
         for atom in model.symbols(shown=True):
-            
             if str(atom.name) == 'position':
                 agent : int = atom.arguments[0].number
                 self.solution.plans[agent].positions.append(atom)
