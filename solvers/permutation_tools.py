@@ -2,7 +2,7 @@
 from math import factorial
 from enum import Enum
 from operator import index
-from turtle import position
+from turtle import distance, position
 from typing import Union, List
 
 """
@@ -210,8 +210,8 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
             else:
                 mrange.append(irange[-1])
             
-        for i in index_to_del:
-            del positions[i]
+        for i,idx in enumerate(sorted(index_to_del)):
+            del positions[idx-i]
             
     elif status == Range.UNDERIN:
         index : int = middle - 1
@@ -243,23 +243,27 @@ def update_pos(irange : Union[List[int],List[int]], positions : List[Union[List[
     
     else:
         
-        dist : int = (mrange[-1] - irange[-1]) - (irange[0] - mrange[0]) 
+        distances : List[int] = [positions[0][0]-0] 
         result : int = -1
+
+        if len(positions) > 1:
+            for i,rng in enumerate(positions[:len(positions)-1]):
+                distances.append(positions[i+1][0]-rng[-1])
+
+        distances.append(maximum-positions[-1][-1])
+
+        max_d : int = max(distances)
+        delta : int = max_d // 2
+        index = distances.index(max_d)  
+
+        if index == 0:
+            result = delta
+        elif index == len(positions):
+            result = maximum - delta
+        else:
+            result = positions[index][0] - delta
         
-        if dist >= 0 and mrange[0] > 0:
-            result : int = mrange[0] - 1
-            if middle > 0 and result - positions[middle-1][-1] == 1:
-                mrange[0] = positions[middle-1][0]
-                del positions[middle-1]       
-            else:
-                mrange[0] -= 1
-                    
-        elif mrange[-1] < maximum:
-            result : int = mrange[-1] + 1
-            if middle < len(positions)-1 and positions[middle+1][0] - result == 1:
-                mrange[-1] = positions[middle+1][-1]
-                del positions[middle+1]       
-            else:
-                mrange[-1] += 1
-        
-        return result
+        if not delta:
+            return -1
+        else:
+            return result
