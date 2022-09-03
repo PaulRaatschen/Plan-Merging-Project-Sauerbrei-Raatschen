@@ -49,7 +49,7 @@ if(args.GenerateInstance == False):
     print("IterativeSolving-Start")
     itSolution = IterativeSolver(args.instance,log_level=logging.CRITICAL).solve()
     initial_plans = itSolution.get_initial_plans()
-    spdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["IS"],'makespan': [itSolution.get_makespan()],'norm_makespan': [itSolution.get_norm_makespan()],'soc' : [itSolution.get_soc()],'norm_soc' : [itSolution.get_norm_soc()],'total_moves' : [itSolution.get_total_moves()],'norm_total_moves' : [itSolution.get_norm_total_moves()],'exec_time' : [itSolution.execution_time],'satisfied' : [itSolution.satisfied]})
+    #spdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["IS"],'makespan': [itSolution.get_makespan()],'norm_makespan': [itSolution.get_norm_makespan()],'soc' : [itSolution.get_soc()],'norm_soc' : [itSolution.get_norm_soc()],'total_moves' : [itSolution.get_total_moves()],'norm_total_moves' : [itSolution.get_norm_total_moves()],'exec_time' : [itSolution.execution_time],'satisfied' : [itSolution.satisfied]})
     #spdf.to_csv(FILEPATH, mode='a', index=False, header = not path.exists(FILEPATH))
 
     save_instance_info(instanceName,itSolution)
@@ -71,10 +71,10 @@ if(args.GenerateInstance == False):
     
     if(allCBS):
         print("CBS-Soc-Start")
-        cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,timeout=cbs_timeout).solve()
-        cbsSolution.initial_plans = initial_plans
-        cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["CBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-        cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+        #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,timeout=cbs_timeout).solve()
+        #cbsSolution.initial_plans = initial_plans
+        #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["CBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+        #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
 
     print("GICBS-Soc-Start")
@@ -85,29 +85,29 @@ if(args.GenerateInstance == False):
 
     if(allCBS):
         print("ICBS-Soc-Start")
-        cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,timeout=cbs_timeout).solve()
-        cbsSolution.initial_plans = initial_plans
-        cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["ICBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-        cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+        #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,timeout=cbs_timeout).solve()
+        #cbsSolution.initial_plans = initial_plans
+        #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["ICBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+        #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     print("MCBS-Soc-Start")
-    cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,meta=True,timeout=cbs_timeout).solve()
-    cbsSolution.initial_plans = initial_plans
-    cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MCBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-    cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+    #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,meta=True,timeout=cbs_timeout).solve()
+    #cbsSolution.initial_plans = initial_plans
+    #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MCBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+    #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     print("MICBS-Soc-Start")
-    cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,meta=True,timeout=cbs_timeout).solve()
-    cbsSolution.initial_plans = initial_plans
-    cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MICBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-    cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)    
+    #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,meta=True,timeout=cbs_timeout).solve()
+    #cbsSolution.initial_plans = initial_plans
+    #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MICBS-SOC"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+    #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)    
 
     if(allCBS):
         print("CBS-Ms-Start")
-        cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,makespan=True,timeout=cbs_timeout).solve()
-        cbsSolution.initial_plans = initial_plans
-        cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["CBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-        cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+        #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,makespan=True,timeout=cbs_timeout).solve()
+        #cbsSolution.initial_plans = initial_plans
+        #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["CBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+        #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     print("GICBS-Ms-Start")
     cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,greedy=True,icbs=True,timeout=cbs_timeout,makespan=True).solve()
@@ -117,22 +117,22 @@ if(args.GenerateInstance == False):
 
     if(allCBS):
         print("ICBS-Ms-Start")
-        cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,timeout=cbs_timeout,makespan=True).solve()
-        cbsSolution.initial_plans = initial_plans
-        cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["ICBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-        cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+        #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,timeout=cbs_timeout,makespan=True).solve()
+        #cbsSolution.initial_plans = initial_plans
+        #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["ICBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+        #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     print("MCBS-Ms-Start")
-    cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,meta=True,timeout=cbs_timeout,makespan=True).solve()
-    cbsSolution.initial_plans = initial_plans
-    cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MCBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-    cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
+    #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,meta=True,timeout=cbs_timeout,makespan=True).solve()
+    #cbsSolution.initial_plans = initial_plans
+    #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MCBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+    #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)
 
     print("MICBS-Ms-Start")
-    cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,meta=True,timeout=cbs_timeout,makespan=True).solve()
-    cbsSolution.initial_plans = initial_plans
-    cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MICBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
-    cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)  
+    #cbsSolution = CBSSolver(args.instance,log_level=logging.CRITICAL,icbs=True,meta=True,timeout=cbs_timeout,makespan=True).solve()
+    #cbsSolution.initial_plans = initial_plans
+    #cbsdf = pd.DataFrame({'instance': [instanceName],'tag':[args.tag],'solver':["MICBS-MS"],'makespan': [cbsSolution.get_makespan()],'norm_makespan': [cbsSolution.get_norm_makespan()],'soc' : [cbsSolution.get_soc()],'norm_soc' : [cbsSolution.get_norm_soc()],'total_moves' : [cbsSolution.get_total_moves()],'norm_total_moves' : [cbsSolution.get_norm_total_moves()],'exec_time' : [cbsSolution.execution_time],'satisfied' : [cbsSolution.satisfied]})
+    #cbsdf.to_csv(FILEPATH, mode='a', index=False, header = False)  
 
 else:
     for complexity in range(1,20):
