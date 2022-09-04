@@ -173,7 +173,7 @@ class CTNode:
         """
 
         meta_agent : Tuple[int] = self.conflic_matrix.meta_agents[agent-1]
-        ctl : Control = Control(['-Wnone','--parallel-mode=8,split'])
+        ctl : Control = Control(['-Wnone'])
         step : int = 0 
         cost : int = 0
         ret : SolveResult = None
