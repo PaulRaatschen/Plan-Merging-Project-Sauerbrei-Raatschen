@@ -1,0 +1,4 @@
+solver&makespan&soc&total_moves&exec_time
+PP&20&201&160&38.000
+PP-OPT&23&229&175&44.700
+GICBS-MS&14&175&140&141.726

@@ -5,7 +5,7 @@
 This is a student project at the University of Potsdam about multi agent path finding through plan merging in ASP (Answer Set Programming) using the [asprilo](https://potassco.org/asprilo/) framework. We implement three different plan merging approaches
 
 ## Directories
-- `Benchmarks/` contains the asprilo instance files used for benchmarking.
+- `Benchmarks/` contains the asprilo instance files used for benchmarking, as well as an copy of our used benchmarking data, and an associated Jupyter Notebook .
 - `Solvers/` contains our plan merging implementations, asp encodings and additional python scripts for benchmarking.
 - `Report/` contains our project report.
 - `Presentation/` contains the slides for our project presentation.

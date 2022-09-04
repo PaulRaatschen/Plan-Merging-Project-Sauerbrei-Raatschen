@@ -1,0 +1,5 @@
+solver&makespan&soc&total_moves&exec_time
+IS&31&279&133&2.088
+PP&23&153&129&1.347
+PP-OPT&28&171&135&2.355
+MICBS-SOC&21&153&147&788.276
