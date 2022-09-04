@@ -8,7 +8,7 @@
 
 
 % Vertex Conflict
-conflict(vertex,R,R',(X,Y),T) :- position(R,(X,Y),T), position(R',(X,Y),T), R!=R', position(R,(X0,Y0),T-1),position(R',(X0',Y0'),T-1), not position(R,(X0',Y0'),T+1),not position(R',(X0,Y0),T+1).
+conflict(vertex,R,R',(X,Y),T) :- position(R,(X,Y),T), position(R',(X,Y),T), R!=R', position(R,(X0,Y0),T-1),position(R',(X0',Y0'),T-1).
 
 % Edge Conflict
     %Both agents switch position

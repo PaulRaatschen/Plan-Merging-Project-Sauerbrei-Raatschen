@@ -1,6 +1,4 @@
-solver,makespan,soc,total_moves,exec_time,satisfied
-IS,47,194,114,6.139,False
-PP,20,201,160,38.000,True
-PP-OPT,23,229,175,44.700,True
-GICBS-SOC,13,114,114,1200.181,False
-GICBS-MS,14,175,140,141.726,True
+solver&makespan&soc&total_moves&exec_time
+PP&20&201&160&38.000
+PP-OPT&23&229&175&44.700
+GICBS-MS&14&175&140&141.726
