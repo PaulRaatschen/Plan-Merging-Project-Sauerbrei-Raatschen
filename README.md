@@ -13,13 +13,19 @@ This is a student project at the University of Potsdam about multi agent path fi
 
 ## Iterative Solving
 
+Plan merging approach based on iterativly solving edge and vertex conflicts.
+
 File: iterative_solving.py
 
 ## Prioritized Planning
 
+Plan merging by avoiding conflicts through a priority order of agents. 
+
 File: prioritized_planning.py
 
 ## Conflict Based Search
+
+ASP based implementation of the [conflict based search](https://www.sciencedirect.com/science/article/pii/S0004370214001386) MAPF algorithm by Sharon et al.
 
 File: cbs.py
 
