@@ -35,7 +35,7 @@ To run a solver on an asprilo instance:
 ```bash
 python <SOLVER>.py <INSTANCE> 
 ```
-For a list of all available options:
+To get a list of all available options:
 ```bash
 python <SOLVER>.py --help
 ```
@@ -57,8 +57,8 @@ mapType:
 
 ### Benchmarker
 
-Runs each solver over an instance, or over multiple generated instances.
-How new instance should be generated must be defined in the pythonfile itself.
+Runs each solver on an instance, or over multiple generated instances.
+How new instance should be generated must be defined in the python file itself.
 
 (Requieres [pandas](https://pandas.pydata.org/docs/index.html))
 File: benchmarker.py
