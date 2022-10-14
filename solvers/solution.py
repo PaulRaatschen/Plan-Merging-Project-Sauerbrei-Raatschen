@@ -1,6 +1,4 @@
 """Imports"""
-from importlib.resources import path
-from msilib.schema import Control
 from typing import List, Dict, Union, Tuple, Callable
 from clingo import Symbol, Control, Model, Number, Function
 from math import inf
